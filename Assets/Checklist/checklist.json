@@ -1,0 +1,87 @@
+{
+    "items": [
+        {
+            "text": "Terrain Planetaire LOD + Biome",
+            "isDone": false,
+            "subTasks": [
+                {
+                    "text": "Noise plat",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "LOD",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Planète",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Biome",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "(Océan)",
+                    "isDone": false,
+                    "subTasks": []
+                }
+            ]
+        },
+        {
+            "text": "Arbre procéduraux",
+            "isDone": false,
+            "subTasks": [
+                {
+                    "text": "2d",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Generation de mesh 3D",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Placement",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Différents types d'arbres",
+                    "isDone": false,
+                    "subTasks": []
+                }
+            ]
+        },
+        {
+            "text": "Clouds gen + coverage",
+            "isDone": false,
+            "subTasks": [
+                {
+                    "text": "Nuages de points à partir d'un Noise 3D",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Déplacement météo -> flow noise",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Rendu + Lumière",
+                    "isDone": false,
+                    "subTasks": []
+                },
+                {
+                    "text": "Couverture obj sphérique",
+                    "isDone": false,
+                    "subTasks": []
+                }
+            ]
+        }
+    ]
+}
