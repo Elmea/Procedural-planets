@@ -62,6 +62,11 @@
             "isDone": false,
             "subTasks": [
                 {
+                    "text": "Génération d'un noise 3D (baké)",
+                    "isDone": true,
+                    "subTasks": []
+                },
+                {
                     "text": "Nuages de points à partir d'un Noise 3D",
                     "isDone": false,
                     "subTasks": []
