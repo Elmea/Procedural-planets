@@ -37,7 +37,7 @@ public class ChecklistWindow : EditorWindow
 
         for (int i = 0; i < checklistData.items.Count; i++)
         {
-            DrawItem(checklistData.items[i], 0, () => checklistData.items.RemoveAt(i));
+            DrawItem(checklistData.items[i], 0, () => checklistData.items.RemoveAt(i), checklistData.items, i);
         }
 
         if (GUILayout.Button("Ajouter une tâche"))
@@ -56,7 +56,7 @@ public class ChecklistWindow : EditorWindow
         }
     }
 
-    private void DrawItem(ChecklistItem item, int indent, System.Action onDelete)
+    private void DrawItem(ChecklistItem item, int indent, System.Action onDelete, List<ChecklistItem> parentList = null, int index = -1)
     {
         EditorGUILayout.BeginHorizontal();
         GUILayout.Space(indent * 20);
@@ -70,6 +70,24 @@ public class ChecklistWindow : EditorWindow
             SaveChecklist();
         }
 
+        if (parentList != null && index > 0)
+        {
+            if (GUILayout.Button("^", GUILayout.Width(25)))
+            {
+                SwapItems(parentList, index, index - 1);
+                SaveChecklist();
+            }
+        }
+
+        if (parentList != null && index < parentList.Count - 1)
+        {
+            if (GUILayout.Button("v", GUILayout.Width(25)))
+            {
+                SwapItems(parentList, index, index + 1);
+                SaveChecklist();
+            }
+        }
+
         if (GUILayout.Button("X", GUILayout.Width(20)))
         {
             onDelete?.Invoke();
@@ -80,11 +98,17 @@ public class ChecklistWindow : EditorWindow
 
         EditorGUILayout.EndHorizontal();
 
-        // Dessin récursif des sous-tâches
         for (int i = 0; i < item.subTasks.Count; i++)
         {
-            DrawItem(item.subTasks[i], indent + 1, () => item.subTasks.RemoveAt(i));
+            DrawItem(item.subTasks[i], indent + 1, () => item.subTasks.RemoveAt(i), item.subTasks, i);
         }
+    }
+
+    private void SwapItems(List<ChecklistItem> list, int indexA, int indexB)
+    {
+        ChecklistItem tmp = list[indexA];
+        list[indexA] = list[indexB];
+        list[indexB] = tmp;
     }
 
     private void LoadChecklist()
