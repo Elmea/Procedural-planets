@@ -36,12 +36,12 @@
             "isDone": false,
             "subTasks": [
                 {
-                    "text": "2d",
+                    "text": "Generation de l'arbre en debug",
                     "isDone": false,
                     "subTasks": []
                 },
                 {
-                    "text": "Generation de mesh 3D",
+                    "text": "Generation de mesh",
                     "isDone": false,
                     "subTasks": []
                 },
