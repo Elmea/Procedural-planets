@@ -1,4 +1,3 @@
-using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -12,12 +11,11 @@ namespace PlanetGen
     public class Chunk : MonoBehaviour
     {
         private int _Resolution;
-        private float _Size;
+        private double _Size;
 
         private Mesh _Mesh;
         private MeshFilter _MeshFilter;
         private MeshRenderer _MeshRenderer;
-
 
         private Mesh.MeshDataArray _MeshDataArray;
         private Mesh.MeshData _MeshData;
@@ -25,7 +23,7 @@ namespace PlanetGen
         private NativeArray<float3> _Verts;
         private NativeArray<float2> _Uvs;
 
-        public void Initialize(int resolution, float chunkSize, Material mat)
+        public void Initialize(int resolution, double chunkSize, Material mat)
         {
             _Resolution = math.max(2, resolution);
             _Size = math.max(1f, chunkSize);
@@ -77,6 +75,7 @@ namespace PlanetGen
             {
                 Resolution = _Resolution,
                 Size = _Size,
+                WorldPos = new float2(transform.position.x, transform.position.z),
                 Vertices = _Verts,
                 UVs = _Uvs
             };
@@ -109,7 +108,8 @@ namespace PlanetGen
         private struct BuildFlatChunkJob : IJobParallelFor
         {
             public int Resolution;
-            public float Size;
+            public double Size;
+            public double2 WorldPos;
 
             public NativeArray<float3> Vertices;
             public NativeArray<float2> UVs;
@@ -121,14 +121,14 @@ namespace PlanetGen
                 int y = index / vertsPerSide;
                 int x = index % vertsPerSide;
 
-                float fx = (float)x / Resolution;
-                float fy = (float)y / Resolution;
+                double fx = (double)x / Resolution;
+                double fy = (double)y / Resolution;
 
-                float xPos = (fx - 0.5f) * Size;
-                float zPos = (fy - 0.5f) * Size;
+                double xPos = (fx - 0.5f) * Size;
+                double zPos = (fy - 0.5f) * Size;
 
-                Vertices[index] = new float3(xPos, 0f, zPos);
-                UVs[index] = new float2(fx, fy);
+                Vertices[index] = new float3((float)xPos, noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 10.0f, (float)zPos);
+                UVs[index] = new float2((float)fx, (float)fy);
             }
         }
     }

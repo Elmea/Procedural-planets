@@ -1,6 +1,5 @@
+using Assets.Scripts.PlanetGen;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -9,104 +8,173 @@ namespace PlanetGen
 {
     public class ChunkManager : MonoBehaviour
     {
-        [Header("Grid Settings")]
-        [SerializeField] private int2 _GridSize = new int2(4,4); // using int2 from Unity.Mathematics because burst compatibility
-        [SerializeField] private float _ChunkSize = 128f; // in WU and 1WU = 1m I guess
         [SerializeField] private int _Resolution = 128; // vertices per chunk axis
-    
-        [Header("Others (Idk need to rename this)")]
+
+        [Header("QuadTree Settings")]
+        [SerializeField] private float _TerrainMaxSize = 32000.0f;
+        [SerializeField] private float _MinLeafSize = 128f;
+        [SerializeField] private double _SplitPx = 2.0f; // if projected size > SplitPx, split
+        [SerializeField] private double _MergePx = 1.414f;
+        [SerializeField] private int _BudgetPerFrame = 32; // max nodes to split/merge per frame
+
+        [Header("")]
         [SerializeField] private Material _ChunkMaterial;
-    
-        private Dictionary<int2, Chunk> _Chunks = new();
+        // for culling and LOD
+        [SerializeField] private Camera _CullCamera;
+        [SerializeField] private double _MaxChunkHeightCoef = 0.5; // 0.5 because 0.414 for from center of cube face to heighest point on sphere and some error boost to 0.5
+
+        private Dictionary<QuadNode, Chunk> _Chunks = new();
+        private Stack<Chunk> _Pool = new(); // used as a stack for recycling chunks
+
         // we will use the job system of unity to generate the chunks in parallel
         private List<JobHandle> _Handles = new();
-    
-        private NativeArray<int> _Triangles; // shared between all chunks
+        private List<Chunk> _ToBuild = new();
+
+        // QuadTree related
+        private TerrainQuadTree _QuadTree;
+        private HashSet<QuadNode> _ActiveChunks = new();
+        readonly List<QuadNode> _ToActivate = new();
+        readonly List<QuadNode> _ToDeactivate = new();
+
+        // For culling
+        private Plane[] _FrustumPlanes = new Plane[6];
 
         private void OnEnable()
         {
-            BuildSharedTriangles();
-
-            for (int z = 0; z < _GridSize.y; ++z)
-            {
-                for (int x = 0; x < _GridSize.x; ++x)
-                {
-                    int2 cellID = new int2(x,z);
-                    SpawnChunk(cellID);
-                }
-            }
-
-            ScheduleAllChunkBuilds();
+            if (_CullCamera == null)
+                _CullCamera = Camera.main;
+            _QuadTree = new TerrainQuadTree(_TerrainMaxSize, _MinLeafSize, _SplitPx, _MergePx, _BudgetPerFrame);
         }
 
-        private void BuildSharedTriangles()
+        private readonly List<QuadNode> _DesiredLeaves = new();
+
+        private void Update()
         {
-            _Triangles = new NativeArray<int>(_Resolution * _Resolution * 6, 
-                Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            if (_CullCamera == null) return;
 
-            int t = 0;
-            for (int y = 0; y < _Resolution; y++)
+            GeometryUtility.CalculateFrustumPlanes(_CullCamera, _FrustumPlanes);
+
+            _QuadTree.CollectLeavesDistance(_CullCamera.transform.position, _FrustumPlanes, _DesiredLeaves);
+
+            var desiredSet = new HashSet<QuadNode>(_DesiredLeaves);
+
+            _ToDeactivate.Clear();
+            foreach (var active in _ActiveChunks)
+                if (!desiredSet.Contains(active))
+                    _ToDeactivate.Add(active);
+
+            foreach (var n in _ToDeactivate)
             {
-                for (int x = 0; x < _Resolution; x++)
+                if (_Chunks.TryGetValue(n, out var chunk))
                 {
-                    int i = y * (_Resolution + 1) + x;
-                    _Triangles[t++] = i;
-                    _Triangles[t++] = i + _Resolution + 1;
-                    _Triangles[t++] = i + 1;
-
-                    _Triangles[t++] = i + 1;
-                    _Triangles[t++] = i + _Resolution + 1;
-                    _Triangles[t++] = i + _Resolution + 2;
+                    RecycleChunk(chunk);
+                    _Chunks.Remove(n);
                 }
+                _ActiveChunks.Remove(n);
             }
 
+            _ToActivate.Clear();
+            foreach (var want in _DesiredLeaves)
+                if (!_ActiveChunks.Contains(want))
+                    _ToActivate.Add(want);
+
+            foreach (var key in _ToActivate)
+            {
+                var b = _QuadTree.GetNodeBounds(key);
+                var chunk = GetChunk();
+                chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}";
+                chunk.transform.SetParent(transform, false);
+                chunk.transform.position = new Vector3((float)b.Center.x, 0f, (float)b.Center.y);
+                chunk.Initialize(_Resolution, b.Size, _ChunkMaterial);
+
+                var tris = SharedTrianglesCache.Get(_Resolution);
+                var h = chunk.ScheduleBuild(tris);
+                _Handles.Add(h);
+
+                _Chunks[key] = chunk;
+                _ActiveChunks.Add(key);
+                _ToBuild.Add(chunk);
+            }
         }
 
         private void LateUpdate()
         {
-            for (int i = 0; i < _Handles.Count; i++) 
+            for (int i = 0; i < _Handles.Count; i++)
                 _Handles[i].Complete();
             _Handles.Clear();
 
-            foreach (var kv in _Chunks)
-                kv.Value.ApplyMesh();
+            foreach (var chunk in _ToBuild)
+            {
+                if (chunk == null) continue;
+                chunk.ApplyMesh();
+            }
+            _ToBuild.Clear();
+            _Handles.Clear();
         }
 
         private void OnDisable()
         {
             foreach (var kv in _Chunks) kv.Value.Dispose();
             _Chunks.Clear();
-
-            if (_Triangles.IsCreated)
-                _Triangles.Dispose();
         }
-    
-        private void ScheduleAllChunkBuilds()
+
+        private void RecycleChunk(Chunk chunk)
         {
-            foreach (var kv in _Chunks)
+            if (!chunk) return;
+            chunk.gameObject.SetActive(false);
+            _Pool.Push(chunk);
+        }
+
+        private Chunk GetChunk()
+        {
+            while (_Pool.Count > 0 && _Pool.Peek() == null)
+                _Pool.Pop(); // normally shouldn't happen but just in case...
+
+            if (_Pool.Count > 0)
             {
-                var handle = kv.Value.ScheduleBuild(_Triangles);
-                _Handles.Add(handle);
+                var c = _Pool.Pop();
+                c.gameObject.SetActive(true);
+                return c;
+            }
+            var go = new GameObject("Chunk");
+            var cnew = go.AddComponent<Chunk>();
+            return cnew;
+        }
+
+        internal static class SharedTrianglesCache
+        {
+            private static readonly Dictionary<int, Unity.Collections.NativeArray<int>> _cache = new();
+
+            public static Unity.Collections.NativeArray<int> Get(int res)
+            {
+                if (_cache.TryGetValue(res, out var arr) && arr.IsCreated) return arr;
+
+                int quadCount = res * res;
+                var triangles = new Unity.Collections.NativeArray<int>(quadCount * 6, Unity.Collections.Allocator.Persistent, Unity.Collections.NativeArrayOptions.UninitializedMemory);
+                int t = 0;
+                for (int y = 0; y < res; y++)
+                    for (int x = 0; x < res; x++)
+                    {
+                        int i = y * (res + 1) + x;
+                        triangles[t++] = i;
+                        triangles[t++] = i + res + 1;
+                        triangles[t++] = i + 1;
+
+                        triangles[t++] = i + 1;
+                        triangles[t++] = i + res + 1;
+                        triangles[t++] = i + res + 2;
+                    }
+                _cache[res] = triangles;
+                return triangles;
+            }
+
+            public static void DisposeAll()
+            {
+                foreach (var kv in _cache)
+                    if (kv.Value.IsCreated) kv.Value.Dispose();
+                _cache.Clear();
             }
         }
 
-        private void SpawnChunk(int2 cellID)
-        {
-            if (_Chunks.ContainsKey(cellID))
-                return;
-        
-            var go = new GameObject($"Chunk_{cellID.x}_{cellID.y}");
-            go.transform.SetParent(transform, false);
-
-            float originX = -(_GridSize.x * 0.5f) * _ChunkSize + _ChunkSize * 0.5f;
-            float originZ = -(_GridSize.y * 0.5f) * _ChunkSize + _ChunkSize * 0.5f;
-            float worldX  = originX + cellID.x * _ChunkSize;
-            float worldZ  = originZ + cellID.y * _ChunkSize;
-            go.transform.position = new Vector3(worldX, 0f, worldZ);
-
-            var chunk = go.AddComponent<Chunk>();
-            chunk.Initialize(_Resolution, _ChunkSize, _ChunkMaterial);
-            _Chunks.Add(cellID, chunk);
-        }
     }
 }
