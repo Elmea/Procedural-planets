@@ -22,6 +22,7 @@ namespace PlanetGen
 
         private NativeArray<float3> _Verts;
         private NativeArray<float2> _Uvs;
+        private NativeArray<float3> _Normals;
 
         public void Initialize(int resolution, double chunkSize, Material mat)
         {
@@ -54,14 +55,13 @@ namespace PlanetGen
 
             _MeshData.SetVertexBufferParams(vertCount,
                 new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
-                new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2, stream: 1)
+                new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3, stream: 1),
+                new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2, stream: 2)
             );
             _MeshData.SetIndexBufferParams(indexCount, IndexFormat.UInt32);
 
-            var vbPosUv = _MeshData.GetVertexData<float3>(0);
-            var vbUv = _MeshData.GetVertexData<float2>(1);
-
             _Verts = new NativeArray<float3>(vertCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory); // temp arrays that's disposed by apply
+            _Normals = new NativeArray<float3>(vertCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory); // temp arrays that's disposed by apply
             _Uvs = new NativeArray<float2>(vertCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory); // temp arrays that's disposed by apply
 
             var ib = _MeshData.GetIndexData<int>();
@@ -75,8 +75,10 @@ namespace PlanetGen
             {
                 Resolution = _Resolution,
                 Size = _Size,
+                NormalDelta = _Size / (_Resolution * 2.0),
                 WorldPos = new float2(transform.position.x, transform.position.z),
                 Vertices = _Verts,
+                Normals = _Normals,
                 UVs = _Uvs
             };
 
@@ -92,15 +94,17 @@ namespace PlanetGen
             if (!_Verts.IsCreated || !_Uvs.IsCreated) return;
 
             var vbPos = _MeshData.GetVertexData<float3>(0);
-            var vbUv = _MeshData.GetVertexData<float2>(1);
+            var vbNorm = _MeshData.GetVertexData<float3>(1);
+            var vbUv = _MeshData.GetVertexData<float2>(2);
             vbPos.CopyFrom(_Verts);
+            vbNorm.CopyFrom(_Normals);
             vbUv.CopyFrom(_Uvs);
 
             Mesh.ApplyAndDisposeWritableMeshData(_MeshDataArray, _Mesh);
             _Verts.Dispose(); // must be disposed or else mem leaks
             _Uvs.Dispose(); // must be disposed or else mem leaks
+            _Normals.Dispose(); // must be disposed or else mem leaks
 
-            _Mesh.RecalculateNormals();
             _Mesh.RecalculateBounds();
         }
 
@@ -109,10 +113,12 @@ namespace PlanetGen
         {
             public int Resolution;
             public double Size;
+            public double NormalDelta;
             public double2 WorldPos;
 
             public NativeArray<float3> Vertices;
             public NativeArray<float2> UVs;
+            public NativeArray<float3> Normals;
 
             public void Execute(int index)
             {
@@ -124,10 +130,16 @@ namespace PlanetGen
                 double fx = (double)x / Resolution;
                 double fy = (double)y / Resolution;
 
-                double xPos = (fx - 0.5f) * Size;
-                double zPos = (fy - 0.5f) * Size;
+                double xPos = (fx - 0.5) * Size;
+                double zPos = (fy - 0.5) * Size;
 
-                Vertices[index] = new float3((float)xPos, noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 10.0f, (float)zPos);
+                float xHeightL = noise.snoise(new float2((float)(xPos - NormalDelta + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 1.0f;
+                float xHeightR = noise.snoise(new float2((float)(xPos + NormalDelta + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 1.0f;
+                float zHeightD = noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos - NormalDelta + WorldPos.y)) * 0.01f) * 1.0f;
+                float zHeightU = noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos + NormalDelta + WorldPos.y)) * 0.01f) * 1.0f;
+
+                Vertices[index] = new float3((float)xPos, noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 1.0f, (float)zPos);
+                Normals[index] = math.normalize(new float3(xHeightL - xHeightR, 2.0f * (float)NormalDelta, zHeightD - zHeightU));
                 UVs[index] = new float2((float)fx, (float)fy);
             }
         }
