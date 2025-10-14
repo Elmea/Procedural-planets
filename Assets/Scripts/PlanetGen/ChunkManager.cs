@@ -116,6 +116,7 @@ namespace PlanetGen
         {
             foreach (var kv in _Chunks) kv.Value.Dispose();
             _Chunks.Clear();
+            SharedTrianglesCache.DisposeAll();
         }
 
         private void RecycleChunk(Chunk chunk)
