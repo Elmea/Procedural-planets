@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.TerrainUtils;
 
 namespace PlanetGen
 {
@@ -43,7 +44,7 @@ namespace PlanetGen
         {
             if (_CullCamera == null)
                 _CullCamera = Camera.main;
-            _QuadTree = new TerrainQuadTree(_TerrainMaxSize, _MinLeafSize, _SplitPx, _MergePx, _BudgetPerFrame);
+            _QuadTree = new TerrainQuadTree(_TerrainMaxSize, _MinLeafSize, _SplitPx, _MergePx, _BudgetPerFrame, transform);
         }
 
         private readonly List<QuadNode> _DesiredLeaves = new();
@@ -142,6 +143,26 @@ namespace PlanetGen
             return cnew;
         }
 
+        void OnDrawGizmos()
+        {
+            // only run in play mode
+            if (!Application.isPlaying || _QuadTree == null)
+                return;
+
+            Color visibleColor = new Color(0, 1, 0, 0.25f);
+            Color culledColor = new Color(1, 0, 0, 0.25f);
+            foreach (var nodeBounds in _QuadTree.BoundsToDraw)
+            {
+                bool inside = GeometryUtility.TestPlanesAABB(_FrustumPlanes, nodeBounds);
+
+                Gizmos.color = inside ? visibleColor : culledColor;
+                Gizmos.DrawWireCube(nodeBounds.center, nodeBounds.size);
+            }
+            Gizmos.color = Color.cyan;
+            Gizmos.matrix = _CullCamera.transform.localToWorldMatrix;
+            Gizmos.DrawFrustum(new Vector3(), _CullCamera.fieldOfView, _CullCamera.farClipPlane, _CullCamera.nearClipPlane, _CullCamera.aspect);
+        }
+
         internal static class SharedTrianglesCache
         {
             private static readonly Dictionary<int, Unity.Collections.NativeArray<int>> _cache = new();
@@ -176,6 +197,5 @@ namespace PlanetGen
                 _cache.Clear();
             }
         }
-
     }
 }
