@@ -44,7 +44,7 @@ namespace PlanetGen
         {
             if (_CullCamera == null)
                 _CullCamera = Camera.main;
-            _QuadTree = new TerrainQuadTree(_TerrainMaxSize, _MinLeafSize, _SplitPx, _MergePx, _BudgetPerFrame, transform);
+            _QuadTree = new TerrainQuadTree(_TerrainMaxSize, _MinLeafSize, transform);
         }
 
         private readonly List<QuadNode> _DesiredLeaves = new();
@@ -54,8 +54,8 @@ namespace PlanetGen
             if (_CullCamera == null) return;
 
             GeometryUtility.CalculateFrustumPlanes(_CullCamera, _FrustumPlanes);
-
-            _QuadTree.CollectLeavesDistance(_CullCamera.transform.position, _FrustumPlanes, _DesiredLeaves);
+            int budget = _BudgetPerFrame;
+            _QuadTree.CollectLeavesDistance(_CullCamera.transform.position, _FrustumPlanes, _DesiredLeaves, ref budget);
 
             var desiredSet = new HashSet<QuadNode>(_DesiredLeaves);
 
@@ -85,7 +85,7 @@ namespace PlanetGen
                 var chunk = GetChunk();
                 chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}";
                 chunk.transform.SetParent(transform, false);
-                chunk.transform.position = new Vector3((float)b.Center.x, 0f, (float)b.Center.y);
+                chunk.transform.position = new Vector3((float)b.Center.x, 0f, (float)b.Center.z);
                 chunk.Initialize(_Resolution, b.Size, _ChunkMaterial);
 
                 var tris = SharedTrianglesCache.Get(_Resolution);
