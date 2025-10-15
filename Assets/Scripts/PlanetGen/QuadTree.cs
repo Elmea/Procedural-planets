@@ -21,7 +21,7 @@ namespace Assets.Scripts.PlanetGen
     // Bounding sphere
     public struct QuadNodeBounds
     {
-        public double2 Center;
+        public double3 Center;
         public double Size;
     }
 
@@ -39,18 +39,15 @@ namespace Assets.Scripts.PlanetGen
         public List<Bounds> BoundsToDraw => _BoundsToDraw;
         private readonly double _RootSize;
         private readonly double _MinLeafSize;
-        private int _BudgetPerFrame;
         private Transform _TerrainTransform;
         private List<Bounds> _BoundsToDraw = new();
 
         public double SplitDistanceFactor = 1.0;
-        public double MergeDistanceFactor = 0.8;
 
-        public TerrainQuadTree(double rootSize, double minLeafSize, double splitPx, double mergePx, int budgetPerFrame, Transform terrainTransform)
+        public TerrainQuadTree(double rootSize, double minLeafSize, Transform terrainTransform)
         {
             _RootSize = rootSize;
             _MinLeafSize = minLeafSize;
-            _BudgetPerFrame = budgetPerFrame;
             this._TerrainTransform = terrainTransform;
         }
 
@@ -61,18 +58,17 @@ namespace Assets.Scripts.PlanetGen
             double minY = -_RootSize * 0.5 + node.Coords.y * size;
             return new QuadNodeBounds
             {
-                Center = new double2(minX + size * 0.5, minY + size * 0.5),
+                Center = new double3(minX + size * 0.5, 0.0f, minY + size * 0.5),
                 Size = size
             };
         }
 
         public void CollectLeavesDistance(
             Vector3 camPos, Plane[] frustumPlanes,
-            List<QuadNode> outLeaves)
+            List<QuadNode> outLeaves, ref int budget)
         {
             outLeaves.Clear();
             _BoundsToDraw.Clear();
-            int budget = _BudgetPerFrame <= 0 ? int.MaxValue : _BudgetPerFrame;
             var root = new QuadNode { Coords = new int2(0, 0), Depth = 0 };
             var rootBounds = GetNodeBounds(root);
             TraverseTree(camPos, frustumPlanes, root, rootBounds, outLeaves, ref budget);
@@ -83,25 +79,21 @@ namespace Assets.Scripts.PlanetGen
             QuadNode key, QuadNodeBounds b,
             List<QuadNode> leaves, ref int budget)
         {
-            Vector3 worldCenter = _TerrainTransform.TransformPoint(new Vector3((float)b.Center.x, 0f, (float)b.Center.y));
+            Vector3 worldCenter = _TerrainTransform.TransformPoint(new Vector3((float)b.Center.x, 0f, (float)b.Center.z));
             var aabb = new Bounds(
                 worldCenter,
-                new Vector3((float)b.Size, 10f, (float)b.Size)); // random high height
+                new Vector3((float)b.Size, (float)b.Size, (float)b.Size)); // random high height
             _BoundsToDraw.Add(aabb);
             if (!GeometryUtility.TestPlanesAABB(frustumPlanes, aabb))
                 return;
 
-            float distXZ = DistanceFromPointToSquareXZ(
-                new Vector2(camPos.x, camPos.z),
-                new Vector2((float)b.Center.x, (float)b.Center.y),
-                (float)b.Size * 0.5f);
+            float dist = Vector3.Distance(camPos, worldCenter);
 
             bool canSplit = b.Size > _MinLeafSize && budget > 0;
-            bool wantSplit = canSplit && (distXZ < b.Size * SplitDistanceFactor);
+            bool wantSplit = canSplit && (dist < b.Size * SplitDistanceFactor);
 
             if (wantSplit)
             {
-                budget--;
 
                 double childSize = b.Size * 0.5;
                 double h = childSize * 0.5;
@@ -113,7 +105,7 @@ namespace Assets.Scripts.PlanetGen
                     topLeftNode,
                     new QuadNodeBounds
                     {
-                        Center = b.Center + new double2(-h, +h),
+                        Center = b.Center + new double3(-h, 0f, +h),
                         Size = childSize
                     },
                     leaves, ref budget
@@ -125,7 +117,7 @@ namespace Assets.Scripts.PlanetGen
                     topRightNode,
                     new QuadNodeBounds
                     {
-                        Center = b.Center + new double2(+h, +h),
+                        Center = b.Center + new double3(+h, 0f, +h),
                         Size = childSize
                     },
                     leaves, ref budget
@@ -137,7 +129,7 @@ namespace Assets.Scripts.PlanetGen
                     bottomLeftNode,
                     new QuadNodeBounds
                     {
-                        Center = b.Center + new double2(-h, -h),
+                        Center = b.Center + new double3(-h, 0f, -h),
                         Size = childSize
                     },
                     leaves, ref budget
@@ -149,21 +141,17 @@ namespace Assets.Scripts.PlanetGen
                     bottomRightNode,
                     new QuadNodeBounds
                     {
-                        Center = b.Center + new double2(+h, -h),
+                        Center = b.Center + new double3(+h, 0f, -h),
                         Size = childSize
                     },
                     leaves, ref budget
                 );
             }
             else
+            {
+                budget--;
                 leaves.Add(key);
-        }
-
-        private static float DistanceFromPointToSquareXZ(Vector2 p, Vector2 center, float half)
-        {
-            float dx = Mathf.Max(Mathf.Abs(p.x - center.x) - half, 0f);
-            float dz = Mathf.Max(Mathf.Abs(p.y - center.y) - half, 0f);
-            return Mathf.Sqrt(dx * dx + dz * dz);
+            }
         }
     }
 }
