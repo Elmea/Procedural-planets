@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5126aa76be9c4614c85f6d70848a5828, type: 3}
   m_Name: TestCloud
   m_EditorClassIdentifier: 
-  planetRadius: 5.24
-  minHeight: 0.5
+  planetRadius: 5
+  minHeight: 1
   maxHeight: 2
-  size: 2
+  size: 1
   speed: 0.5
