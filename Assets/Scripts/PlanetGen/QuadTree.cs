@@ -40,14 +40,16 @@ namespace Assets.Scripts.PlanetGen
         private readonly double _RootSize;
         private readonly double _MinLeafSize;
         private Transform _TerrainTransform;
+        private Matrix4x4 _QuadTreeMatrix;
         private List<Bounds> _BoundsToDraw = new();
 
         public double SplitDistanceFactor = 1.0;
 
-        public TerrainQuadTree(double rootSize, double minLeafSize, Transform terrainTransform)
+        public TerrainQuadTree(double rootSize, double minLeafSize, float4x4 quadTreeMatrix, Transform terrainTransform)
         {
             _RootSize = rootSize;
             _MinLeafSize = minLeafSize;
+            _QuadTreeMatrix = quadTreeMatrix;
             this._TerrainTransform = terrainTransform;
         }
 
@@ -64,19 +66,19 @@ namespace Assets.Scripts.PlanetGen
         }
 
         public void CollectLeavesDistance(
-            Vector3 camPos, Plane[] frustumPlanes,
+            Vector3 camPos, Plane[] frustumPlanes, HashSet<QuadNode> activeNodes,
             List<QuadNode> outLeaves, ref int budget)
         {
             outLeaves.Clear();
             _BoundsToDraw.Clear();
             var root = new QuadNode { Coords = new int2(0, 0), Depth = 0 };
             var rootBounds = GetNodeBounds(root);
-            TraverseTree(camPos, frustumPlanes, root, rootBounds, outLeaves, ref budget);
+            TraverseTree(camPos, frustumPlanes, root, rootBounds, activeNodes, outLeaves, ref budget);
         }
 
         private void TraverseTree(
             Vector3 camPos, Plane[] frustumPlanes,
-            QuadNode key, QuadNodeBounds b,
+            QuadNode key, QuadNodeBounds b, HashSet<QuadNode> activeNodes,
             List<QuadNode> leaves, ref int budget)
         {
             Vector3 worldCenter = _TerrainTransform.TransformPoint(new Vector3((float)b.Center.x, 0f, (float)b.Center.z));
@@ -108,7 +110,7 @@ namespace Assets.Scripts.PlanetGen
                         Center = b.Center + new double3(-h, 0f, +h),
                         Size = childSize
                     },
-                    leaves, ref budget
+                    activeNodes, leaves, ref budget
                 );
 
                 // top right
@@ -120,7 +122,7 @@ namespace Assets.Scripts.PlanetGen
                         Center = b.Center + new double3(+h, 0f, +h),
                         Size = childSize
                     },
-                    leaves, ref budget
+                    activeNodes, leaves, ref budget
                 );
 
                 // bottom left
@@ -132,7 +134,7 @@ namespace Assets.Scripts.PlanetGen
                         Center = b.Center + new double3(-h, 0f, -h),
                         Size = childSize
                     },
-                    leaves, ref budget
+                    activeNodes, leaves, ref budget
                 );
 
                 // bottom right
@@ -144,12 +146,13 @@ namespace Assets.Scripts.PlanetGen
                         Center = b.Center + new double3(+h, 0f, -h),
                         Size = childSize
                     },
-                    leaves, ref budget
+                    activeNodes, leaves, ref budget
                 );
             }
             else
             {
-                budget--;
+                if (activeNodes.Contains(key) == false)
+                    budget--;
                 leaves.Add(key);
             }
         }
