@@ -44,18 +44,34 @@ namespace PlanetGen
         {
             if (_CullCamera == null)
                 _CullCamera = Camera.main;
-            _QuadTree = new TerrainQuadTree(_TerrainMaxSize, _MinLeafSize, transform);
+
+            float4x4 quadTreeMatrix = float4x4.TRS(new float3(0, 0, 0), quaternion.AxisAngle(new float3(1, 0, 0), math.radians(90)), new float3(1));
+            _QuadTree = new TerrainQuadTree(_TerrainMaxSize, _MinLeafSize, quadTreeMatrix, transform);
         }
 
         private readonly List<QuadNode> _DesiredLeaves = new();
 
         private void Update()
         {
-            if (_CullCamera == null) return;
+            if (_CullCamera == null)
+                return;
+
+            for (int i = 0; i < _Handles.Count; i++)
+                _Handles[i].Complete();
+            _Handles.Clear();
+
+            foreach (var chunk in _ToBuild)
+            {
+                if (chunk == null)
+                    continue;
+                chunk.ApplyMesh();
+            }
+            _ToBuild.Clear();
+            _Handles.Clear();
 
             GeometryUtility.CalculateFrustumPlanes(_CullCamera, _FrustumPlanes);
             int budget = _BudgetPerFrame;
-            _QuadTree.CollectLeavesDistance(_CullCamera.transform.position, _FrustumPlanes, _DesiredLeaves, ref budget);
+            _QuadTree.CollectLeavesDistance(_CullCamera.transform.position, _FrustumPlanes, _ActiveChunks, _DesiredLeaves, ref budget);
 
             var desiredSet = new HashSet<QuadNode>(_DesiredLeaves);
 
@@ -100,17 +116,6 @@ namespace PlanetGen
 
         private void LateUpdate()
         {
-            for (int i = 0; i < _Handles.Count; i++)
-                _Handles[i].Complete();
-            _Handles.Clear();
-
-            foreach (var chunk in _ToBuild)
-            {
-                if (chunk == null) continue;
-                chunk.ApplyMesh();
-            }
-            _ToBuild.Clear();
-            _Handles.Clear();
         }
 
         private void OnDisable()
