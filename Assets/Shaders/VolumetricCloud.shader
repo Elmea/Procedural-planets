@@ -5,8 +5,6 @@ Shader "Custom/VolumetricCloud"
         _BlitTexture("Main Texture", 2D) = "white" {}   
 
         _CloudColor("Cloud Color", Color) = (1,1,1,1)
-        _Noise3D ("Noise3D", 3D) = "white" {}
-        _NoiseScale ("Noise scale", float) = 32.0
     }
     SubShader
     {
@@ -48,10 +46,7 @@ Shader "Custom/VolumetricCloud"
 
             fixed4 _CloudColor;
                 
-            #define NUM_OCTAVES 5
-            float _NoiseScale;
-            sampler3D _Noise3D;
-            float4 _Noise3D_ST;
+            #define NUM_OCTAVES 10
 
             StructuredBuffer<float> planetDataBuffer; 
 
@@ -69,14 +64,6 @@ Shader "Custom/VolumetricCloud"
                 return result;
             }
 
-            float SampleNoise3D(float3 pos)
-            {
-                float3 uvw = frac(pos * _NoiseScale);
-                float value = tex3D(_Noise3D, uvw).r;
-
-                return value;
-            }
-
             bool intersectSphere(float3 ro, float3 rd, float3 center, float radius, out float t0, out float t1)
             {
                 float3 oc = ro - center;
@@ -90,27 +77,44 @@ Shader "Custom/VolumetricCloud"
                 return true;
             }
 
-            float fbm(float3 st)
+            float rand(float3 p) 
             {
-                float v = 0.0;
-                float a = 0.5;
-                float3 shift = float3(100.0, 100.0, 100.0);
+                return frac(sin(dot(p, float3(12.345, 67.89, 412.12))) * 42123.45) * 2.0 - 1.0;
+            }
 
-                float cosRot = cos(0.5);
-                float sinRot = sin(0.5);
-                float3x3 rot = float3x3(
-                                cosRot, 0, sinRot,
-                                0,      1, 0,
-                                -sinRot,0, cosRot);
+            float fbmNoise(float3 p) 
+            {
+                float3 u = floor(p);
+                float3 v = frac(p);
+                float3 s = smoothstep(0.0, 1.0, v);
+    
+                float a = rand(u);
+                float b = rand(u + float3(1.0, 0.0, 0.0));
+                float c = rand(u + float3(0.0, 1.0, 0.0));
+                float d = rand(u + float3(1.0, 1.0, 0.0));
+                float e = rand(u + float3(0.0, 0.0, 1.0));
+                float f = rand(u + float3(1.0, 0.0, 1.0));
+                float g = rand(u + float3(0.0, 1.0, 1.0));
+                float h = rand(u + float3(1.0, 1.0, 1.0));
+    
+                return lerp(lerp(lerp(a, b, s.x), lerp(c, d, s.x), s.y),
+                           lerp(lerp(e, f, s.x), lerp(g, h, s.x), s.y),
+                           s.z);
+            }
 
+            float fbm(float3 p)
+            {
+                float3 q = p;
+                float weight = 0.5;
+                float ret = 0.0;
+    
                 for (int i = 0; i < NUM_OCTAVES; i++)
                 {
-                    v += a * SampleNoise3D(st);
-                    st = mul(rot, st) * 2.0 + shift;
-                    a *= 0.5;
+                    ret += weight * fbmNoise(q); 
+                    q *= 2.0;
+                    weight *= 0.5;
                 }
-
-                return saturate(v);
+                return clamp(ret, 0.0, 1.0);
             }
 
             fixed4 volumetricMarch(float3 ro, float3 rd, planetData planet)
@@ -126,26 +130,25 @@ Shader "Custom/VolumetricCloud"
                 t0 = max(t0, 0.0);
                 float depth = t0;
             
-                for (int i = 0; i < 80; i++)
+                for (int i = 0; i < 120; i++)
                 {
                     float3 p = ro + depth * rd;
                     float heightAboveSurface = length(p - planet.center) - planet.radius;
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
                     {
-                        float density = fbm(p * _NoiseScale);
+                        float density = fbm(p + planet.speed * _Time);   
 
                         if (density > 0.001)
                         {
                             float3 c = lerp(_CloudColor.rgb, 0, density);
                             float a = density * 0.4 * (1.0 - alpha);
-                            a *= SampleNoise3D(p);
                             color += c * a;
                             alpha += a;
                         }
                     }
 
-                    depth += max(0.1, 0.02 * depth);
+                    depth += max(0.04, 0.02 * depth);
                     if (alpha > 0.998) break;
                 }
 
