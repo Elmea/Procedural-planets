@@ -82,8 +82,16 @@ namespace Assets.Scripts.PlanetGen
         {
             QuadNodeBounds b = GetNodeBounds(node);
             Vector3 center = _QuadTreeMatrix * new float4(_TerrainTransform.TransformPoint((float3)b.Center), 1);
+            center = center.normalized * (float)_RootSize * 0.5f; // project to sphere surface
             b.Center = (float3)center;
             return b;
+        }
+
+        public Vector3 GetQuadCenterNoRot(QuadNode node)
+        {
+            QuadNodeBounds b = GetNodeBounds(node);
+            b.Center.y = _RootSize * 0.5; // lift above 0 height
+            return (float3)b.Center;
         }
 
         public Matrix4x4 GetQuadTreeMatrix()
@@ -107,6 +115,7 @@ namespace Assets.Scripts.PlanetGen
             List<QuadNode> leaves, ref int budget)
         {
             Vector3 worldCenter = _QuadTreeMatrix * new float4(_TerrainTransform.TransformPoint((float3)b.Center), 1);
+            worldCenter = worldCenter.normalized * (float)_RootSize * 0.5f; // project to sphere surface
             var aabb = new Bounds(
                 worldCenter,
                 new Vector3((float)b.Size, (float)b.Size, (float)b.Size)); // random high height

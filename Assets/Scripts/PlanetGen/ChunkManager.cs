@@ -24,8 +24,6 @@ namespace PlanetGen
         [Header("QuadTree Settings")]
         [SerializeField] private float _PlanetRadius = 16000f;
         [SerializeField] private float _MinLeafSize = 128f;
-        [SerializeField] private double _SplitPx = 2.0f; // if projected size > SplitPx, split
-        [SerializeField] private double _MergePx = 1.414f;
         [SerializeField] private int _BudgetPerFrame = 32; // max nodes to split/merge per frame
         [SerializeField] private bool _EnableCulling = false;
         [SerializeField] private bool _EnableDebugQuad = false;
@@ -34,7 +32,6 @@ namespace PlanetGen
         [SerializeField] private Material _ChunkMaterial;
         // for culling and LOD
         [SerializeField] private Camera _CullCamera;
-        [SerializeField] private double _MaxChunkHeightCoef = 0.5; // 0.5 because 0.414 for from center of cube face to heighest point on sphere and some error boost to 0.5
 
         private Dictionary<QuadNode, Chunk> _Chunks = new();
         private Stack<Chunk> _Pool = new(); // used as a stack for recycling chunks
@@ -168,14 +165,17 @@ namespace PlanetGen
             {
                 var qt = _FaceQuadTrees[(int)key.Face];
                 var b = qt.GetWorldNodeBounds(key);
+                var qtb = qt.GetNodeBounds(key); // without rotation, for positioning
                 var chunk = GetChunk();
                 chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}_F{key.Face}";
                 chunk.transform.SetParent(transform, false);
 
                 chunk.transform.position = (float3)b.Center;
                 chunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
-
-                chunk.Initialize(_Resolution, b.Size, _ChunkMaterial);
+                double3 qtNoRotCenter = qtb.Center;
+                qtNoRotCenter.y = _PlanetRadius;
+                qtNoRotCenter = math.normalize(qtNoRotCenter) * _PlanetRadius;
+                chunk.Initialize(_Resolution, b.Size, _ChunkMaterial, _PlanetRadius, qtb.Center, qtNoRotCenter);
 
                 var tris = SharedTrianglesCache.Get(_Resolution);
                 var h = chunk.ScheduleBuild(tris);
