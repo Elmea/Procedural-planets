@@ -16,4 +16,4 @@ MonoBehaviour:
   minHeight: 0
   maxHeight: 2.5
   thickness: 1
-  speed: 0.1
+  speed: 0.01
