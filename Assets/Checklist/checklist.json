@@ -67,8 +67,13 @@
                     "subTasks": []
                 },
                 {
+                    "text": "Raymarching autour des planètes",
+                    "isDone": true,
+                    "subTasks": []
+                },
+                {
                     "text": "Nuages de points à partir d'un Noise 3D",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {

@@ -133,7 +133,7 @@ Shader "Custom/VolumetricCloud"
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
                     {
-                        float density = fbm(p * _NoiseScale + _Time * planet.speed);
+                        float density = fbm(p * _NoiseScale);
 
                         if (density > 0.001)
                         {
@@ -146,6 +146,7 @@ Shader "Custom/VolumetricCloud"
                     }
 
                     depth += max(0.1, 0.02 * depth);
+                    if (alpha > 0.998) break;
                 }
 
                 return fixed4(saturate(color), saturate(alpha));
@@ -176,12 +177,14 @@ Shader "Custom/VolumetricCloud"
                 float3 ro = _WorldSpaceCameraPos;
                 float3 rd = i.viewDir / viewLength;
 
+                fixed4 cloudColor = fixed4(0,0,0,0);
                 for (int i = 0; i < planetDataBuffer.Length / 8; i++)
                 {
                     planetData planet = samplePlanetData(i);
-                    fixed4 cloudColor = volumetricMarch(ro, rd, planet);
-                    resultcolor.rgb = lerp(resultcolor.rgb, cloudColor.rgb, cloudColor.a);
+                    cloudColor += volumetricMarch(ro, rd, planet);
                 }
+
+                resultcolor.rgb = lerp(resultcolor.rgb, cloudColor.rgb, cloudColor.a);
                 
                 return resultcolor;
             }
