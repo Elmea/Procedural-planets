@@ -1,20 +1,27 @@
-﻿using System;
+﻿using PlanetGen;
+using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace Assets.Scripts.PlanetGen
 {
+
     public struct QuadNode : IEquatable<QuadNode>
     {
         public int2 Coords;
         public int Depth;
+        public PlanetFace Face;
 
         public bool Equals(QuadNode other) => other.Coords.x == Coords.x &&
-                                             other.Coords.y == Coords.y &&
-                                             other.Depth == Depth;
+                                              other.Coords.y == Coords.y &&
+                                              other.Depth == Depth &&
+                                              other.Face == Face;
 
-        public override int GetHashCode() => Coords.x.GetHashCode() ^ Coords.y.GetHashCode() ^ Depth.GetHashCode();
+        public override int GetHashCode() => Coords.x.GetHashCode() ^
+                                             Coords.y.GetHashCode() ^
+                                             Depth.GetHashCode() ^
+                                             Face.GetHashCode();
         public override bool Equals(object obj) => obj is QuadNode other && Equals(other);
     }
 
@@ -42,15 +49,21 @@ namespace Assets.Scripts.PlanetGen
         private Transform _TerrainTransform;
         private Matrix4x4 _QuadTreeMatrix;
         private List<Bounds> _BoundsToDraw = new();
+        private PlanetFace _HandledFace;
+        private bool _EnableCulling;
 
         public double SplitDistanceFactor = 1.0;
 
-        public TerrainQuadTree(double rootSize, double minLeafSize, float4x4 quadTreeMatrix, Transform terrainTransform)
+        public TerrainQuadTree(double rootSize, double minLeafSize, 
+            float4x4 quadTreeMatrix, Transform terrainTransform,
+            PlanetFace face, bool enableCulling)
         {
             _RootSize = rootSize;
             _MinLeafSize = minLeafSize;
             _QuadTreeMatrix = quadTreeMatrix;
-            this._TerrainTransform = terrainTransform;
+            _TerrainTransform = terrainTransform;
+            _HandledFace = face;
+            _EnableCulling = enableCulling;
         }
 
         public QuadNodeBounds GetNodeBounds(QuadNode node)
@@ -65,13 +78,25 @@ namespace Assets.Scripts.PlanetGen
             };
         }
 
+        public QuadNodeBounds GetWorldNodeBounds(QuadNode node)
+        {
+            QuadNodeBounds b = GetNodeBounds(node);
+            Vector3 center = _QuadTreeMatrix * new float4(_TerrainTransform.TransformPoint((float3)b.Center), 1);
+            b.Center = (float3)center;
+            return b;
+        }
+
+        public Matrix4x4 GetQuadTreeMatrix()
+        {
+            return _QuadTreeMatrix;
+        }
+
         public void CollectLeavesDistance(
             Vector3 camPos, Plane[] frustumPlanes, HashSet<QuadNode> activeNodes,
             List<QuadNode> outLeaves, ref int budget)
         {
-            outLeaves.Clear();
             _BoundsToDraw.Clear();
-            var root = new QuadNode { Coords = new int2(0, 0), Depth = 0 };
+            var root = new QuadNode { Coords = new int2(0, 0), Depth = 0, Face = _HandledFace };
             var rootBounds = GetNodeBounds(root);
             TraverseTree(camPos, frustumPlanes, root, rootBounds, activeNodes, outLeaves, ref budget);
         }
@@ -81,12 +106,12 @@ namespace Assets.Scripts.PlanetGen
             QuadNode key, QuadNodeBounds b, HashSet<QuadNode> activeNodes,
             List<QuadNode> leaves, ref int budget)
         {
-            Vector3 worldCenter = _TerrainTransform.TransformPoint(new Vector3((float)b.Center.x, 0f, (float)b.Center.z));
+            Vector3 worldCenter = _QuadTreeMatrix * new float4(_TerrainTransform.TransformPoint((float3)b.Center), 1);
             var aabb = new Bounds(
                 worldCenter,
                 new Vector3((float)b.Size, (float)b.Size, (float)b.Size)); // random high height
             _BoundsToDraw.Add(aabb);
-            if (!GeometryUtility.TestPlanesAABB(frustumPlanes, aabb))
+            if (_EnableCulling && !GeometryUtility.TestPlanesAABB(frustumPlanes, aabb))
                 return;
 
             float dist = Vector3.Distance(camPos, worldCenter);
@@ -102,7 +127,8 @@ namespace Assets.Scripts.PlanetGen
                 int d1 = key.Depth + 1;
 
                 // top left
-                var topLeftNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 0, key.Coords.y * 2 + 1), Depth = d1 };
+                var topLeftNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 0, key.Coords.y * 2 + 1),
+                    Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     topLeftNode,
                     new QuadNodeBounds
@@ -114,7 +140,8 @@ namespace Assets.Scripts.PlanetGen
                 );
 
                 // top right
-                var topRightNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 1, key.Coords.y * 2 + 1), Depth = d1 };
+                var topRightNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 1, key.Coords.y * 2 + 1),
+                    Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     topRightNode,
                     new QuadNodeBounds
@@ -126,7 +153,8 @@ namespace Assets.Scripts.PlanetGen
                 );
 
                 // bottom left
-                var bottomLeftNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 0, key.Coords.y * 2 + 0), Depth = d1 };
+                var bottomLeftNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 0, key.Coords.y * 2 + 0),
+                    Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     bottomLeftNode,
                     new QuadNodeBounds
@@ -138,7 +166,8 @@ namespace Assets.Scripts.PlanetGen
                 );
 
                 // bottom right
-                var bottomRightNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 1, key.Coords.y * 2 + 0), Depth = d1 };
+                var bottomRightNode = new QuadNode { Coords = new int2(key.Coords.x * 2 + 1, key.Coords.y * 2 + 0),
+                    Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     bottomRightNode,
                     new QuadNodeBounds
@@ -151,9 +180,12 @@ namespace Assets.Scripts.PlanetGen
             }
             else
             {
-                if (activeNodes.Contains(key) == false)
-                    budget--;
-                leaves.Add(key);
+                if (budget > 0)
+                {
+                    if (activeNodes.Contains(key) == false)
+                        budget--;
+                    leaves.Add(key);
+                }
             }
         }
     }
