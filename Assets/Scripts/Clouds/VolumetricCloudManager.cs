@@ -35,14 +35,14 @@ public class VolumetricCloudManager : MonoBehaviour
 
         for (int i = 0; i < cloudRenderers.Length; i++)
         {
-            rawData[i] = cloudRenderers[i].gameObject.transform.position.x;
-            rawData[i+1] = cloudRenderers[i].gameObject.transform.position.y;
-            rawData[i+2] = cloudRenderers[i].gameObject.transform.position.z;
-            rawData[i+3] = cloudRenderers[i].CloudParameters.planetRadius;
-            rawData[i+4] = cloudRenderers[i].CloudParameters.minHeight;
-            rawData[i+5] = cloudRenderers[i].CloudParameters.maxHeight;
-            rawData[i+6] = cloudRenderers[i].CloudParameters.thickness;
-            rawData[i+7] = cloudRenderers[i].CloudParameters.speed;
+            rawData[i * 8] = cloudRenderers[i].gameObject.transform.position.x;
+            rawData[i * 8 + 1] = cloudRenderers[i].gameObject.transform.position.y;
+            rawData[i * 8 + 2] = cloudRenderers[i].gameObject.transform.position.z;
+            rawData[i * 8 + 3] = cloudRenderers[i].CloudParameters.planetRadius;
+            rawData[i * 8 + 4] = cloudRenderers[i].CloudParameters.minHeight;
+            rawData[i * 8 + 5] = cloudRenderers[i].CloudParameters.maxHeight;
+            rawData[i * 8 + 6] = cloudRenderers[i].CloudParameters.thickness;
+            rawData[i * 8 + 7] = cloudRenderers[i].CloudParameters.speed;
         }
 
         buffer.SetData(rawData);
