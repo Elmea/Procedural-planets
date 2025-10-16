@@ -58,6 +58,7 @@ Shader "Custom/VolumetricCloud"
             planetData samplePlanetData(int planetId)
             {
                 planetData result;
+                planetId = planetId * 8;
 
                 result.center = float3(planetDataBuffer[planetId], planetDataBuffer[planetId+1], planetDataBuffer[planetId+2]);
                 result.radius = planetDataBuffer[planetId+3];
@@ -138,6 +139,7 @@ Shader "Custom/VolumetricCloud"
                         {
                             float3 c = lerp(_CloudColor.rgb, 0, density);
                             float a = density * 0.4 * (1.0 - alpha);
+                            a *= SampleNoise3D(p);
                             color += c * a;
                             alpha += a;
                         }
