@@ -41,7 +41,7 @@ public class VolumetricCloudManager : MonoBehaviour
             rawData[i * 8 + 3] = cloudRenderers[i].CloudParameters.planetRadius;
             rawData[i * 8 + 4] = cloudRenderers[i].CloudParameters.minHeight;
             rawData[i * 8 + 5] = cloudRenderers[i].CloudParameters.maxHeight;
-            rawData[i * 8 + 6] = cloudRenderers[i].CloudParameters.thickness;
+            rawData[i * 8 + 6] = cloudRenderers[i].CloudParameters.size;
             rawData[i * 8 + 7] = cloudRenderers[i].CloudParameters.speed;
         }
 

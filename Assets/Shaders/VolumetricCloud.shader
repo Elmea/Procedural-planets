@@ -38,7 +38,7 @@ Shader "Custom/VolumetricCloud"
                 float3 center;
                 float radius; 
                 float2 minMaxHeight;
-                float thickness;
+                float cloudSize;
                 float speed;
             };
 
@@ -58,7 +58,7 @@ Shader "Custom/VolumetricCloud"
                 result.center = float3(planetDataBuffer[planetId], planetDataBuffer[planetId+1], planetDataBuffer[planetId+2]);
                 result.radius = planetDataBuffer[planetId+3];
                 result.minMaxHeight = float2(planetDataBuffer[planetId+4], planetDataBuffer[planetId+5]);
-                result.thickness = planetDataBuffer[planetId+6];
+                result.cloudSize = planetDataBuffer[planetId+6];
                 result.speed = planetDataBuffer[planetId+7];
 
                 return result;
@@ -119,11 +119,11 @@ Shader "Custom/VolumetricCloud"
 
             fixed4 volumetricMarch(float3 ro, float3 rd, planetData planet)
             {
-                // float depth = 0.0;
                 float3 color = float3(0.0, 0.0, 0.0);
                 float alpha = 0.0;
 
                 float t0, t1;
+
                 if (!intersectSphere(ro, rd, planet.center, planet.radius + planet.minMaxHeight.y, t0, t1))
                     return 0;
 
@@ -137,7 +137,7 @@ Shader "Custom/VolumetricCloud"
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
                     {
-                        float density = fbm(p + planet.speed * _Time);   
+                        float density = fbm((p + planet.speed * _Time) / planet.cloudSize);   
 
                         if (density > 0.001)
                         {
