@@ -24,7 +24,11 @@ namespace PlanetGen
         private NativeArray<float2> _Uvs;
         private NativeArray<float3> _Normals;
 
-        public void Initialize(int resolution, double chunkSize, Material mat)
+        float _PlanetRadius;
+        double3 _QuadTreeBoundsCenter;
+        double3 _QuadTreeSphereNoRotCenter;
+
+        public void Initialize(int resolution, double chunkSize, Material mat, float planetRadius, double3 qtCenter, double3 qtSphereNoRotCenter)
         {
             _Resolution = math.max(2, resolution);
             _Size = math.max(1f, chunkSize);
@@ -36,6 +40,9 @@ namespace PlanetGen
             _Mesh.MarkDynamic();
             _MeshFilter.sharedMesh = _Mesh;
             _MeshRenderer.sharedMaterial = mat;
+            _PlanetRadius = planetRadius;
+            _QuadTreeBoundsCenter = qtCenter;
+            _QuadTreeSphereNoRotCenter = qtSphereNoRotCenter;
         }
 
         public void Dispose()
@@ -75,8 +82,11 @@ namespace PlanetGen
             {
                 Resolution = _Resolution,
                 Size = _Size,
+                PlanetRadius = _PlanetRadius,
+                QuadTreeSphereNoRotCenter = _QuadTreeSphereNoRotCenter,
+                QuadTreeBoundsCenter = _QuadTreeBoundsCenter,
                 NormalDelta = _Size / (_Resolution * 2.0),
-                WorldPos = new float2(transform.position.x, transform.position.z),
+                WorldPos = (float3)transform.position,
                 Vertices = _Verts,
                 Normals = _Normals,
                 UVs = _Uvs
@@ -91,7 +101,8 @@ namespace PlanetGen
 
         public void ApplyMesh()
         {
-            if (!_Verts.IsCreated || !_Uvs.IsCreated) return;
+            if (!_Verts.IsCreated || !_Uvs.IsCreated)
+                return;
 
             var vbPos = _MeshData.GetVertexData<float3>(0);
             var vbNorm = _MeshData.GetVertexData<float3>(1);
@@ -112,9 +123,12 @@ namespace PlanetGen
         private struct BuildFlatChunkJob : IJobParallelFor
         {
             public int Resolution;
+            public float PlanetRadius;
             public double Size;
             public double NormalDelta;
-            public double2 WorldPos;
+            public double3 WorldPos;
+            public double3 QuadTreeSphereNoRotCenter;
+            public double3 QuadTreeBoundsCenter;
 
             public NativeArray<float3> Vertices;
             public NativeArray<float2> UVs;
@@ -123,7 +137,6 @@ namespace PlanetGen
             public void Execute(int index)
             {
                 int vertsPerSide = Resolution + 1;
-
                 int y = index / vertsPerSide;
                 int x = index % vertsPerSide;
 
@@ -133,12 +146,17 @@ namespace PlanetGen
                 double xPos = (fx - 0.5) * Size;
                 double zPos = (fy - 0.5) * Size;
 
-                float xHeightL = noise.snoise(new float2((float)(xPos - NormalDelta + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 1.0f;
-                float xHeightR = noise.snoise(new float2((float)(xPos + NormalDelta + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 1.0f;
-                float zHeightD = noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos - NormalDelta + WorldPos.y)) * 0.01f) * 1.0f;
-                float zHeightU = noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos + NormalDelta + WorldPos.y)) * 0.01f) * 1.0f;
+                float xHeightL = noise.snoise(new float2((float)(xPos - NormalDelta + QuadTreeBoundsCenter.x), (float)(zPos + QuadTreeBoundsCenter.z)) * 0.01f) * 1.0f;
+                float xHeightR = noise.snoise(new float2((float)(xPos + NormalDelta + QuadTreeBoundsCenter.x), (float)(zPos + QuadTreeBoundsCenter.z)) * 0.01f) * 1.0f;
+                float zHeightD = noise.snoise(new float2((float)(xPos + QuadTreeBoundsCenter.x), (float)(zPos - NormalDelta + QuadTreeBoundsCenter.z)) * 0.01f) * 1.0f;
+                float zHeightU = noise.snoise(new float2((float)(xPos + QuadTreeBoundsCenter.x), (float)(zPos + NormalDelta + QuadTreeBoundsCenter.z)) * 0.01f) * 1.0f;
+                //float3 pos = new float3((float)xPos, noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 1.0f, (float)zPos);
+                double3 pos = new double3(xPos + QuadTreeBoundsCenter.x, PlanetRadius, zPos + QuadTreeBoundsCenter.z);
+                pos = math.normalize(pos);
+                pos *= (PlanetRadius) + noise.snoise(new float2((float)(xPos + QuadTreeBoundsCenter.x), (float)(zPos + QuadTreeBoundsCenter.z)) * 0.01f) * 1.0f;
+                pos -= QuadTreeSphereNoRotCenter; // make relative to world pos
 
-                Vertices[index] = new float3((float)xPos, noise.snoise(new float2((float)(xPos + WorldPos.x), (float)(zPos + WorldPos.y)) * 0.01f) * 1.0f, (float)zPos);
+                Vertices[index] = (float3)pos;
                 Normals[index] = math.normalize(new float3(xHeightL - xHeightR, 2.0f * (float)NormalDelta, zHeightD - zHeightU));
                 UVs[index] = new float2((float)fx, (float)fy);
             }

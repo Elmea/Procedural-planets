@@ -6,17 +6,17 @@
             "subTasks": [
                 {
                     "text": "Noise plat",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {
                     "text": "LOD",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {
                     "text": "Planète",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {

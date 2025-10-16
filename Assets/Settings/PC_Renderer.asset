@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff2fb5479b14ad347898b6f760cf8a9c, type: 3}
   m_Name: VolumetricCloudRendererFeature
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   cloudMaterial: {fileID: 2100000, guid: c629fcc4ee7a1df4b94998bc0ffbb2f7, type: 2}
   injectionPoint: 550
 --- !u!114 &11400000
