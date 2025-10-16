@@ -1,22 +1,29 @@
+using UnityEditor;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
-
-[RequireComponent(typeof(Camera))]
-public class VolumetricCloudEffect : MonoBehaviour
+[ExecuteAlways]
+public class VolumetricCloudManager : MonoBehaviour
 {
     public Material cloudMat;
     private CloudRenderer[] cloudRenderers;
     ComputeBuffer buffer;
 
-    private void GatherRenderers()
+    private void CleanBuffer()
     {
+        if (buffer != null) buffer.Release();
+    }
+
+    public void GatherRenderers()
+    {
+        CleanBuffer();
         cloudRenderers = FindObjectsByType<CloudRenderer>(FindObjectsSortMode.None);
+        buffer = new ComputeBuffer(cloudRenderers.Length * 8, sizeof(float));
     }
 
     private void Start()
     {
         GatherRenderers();
-        buffer = new ComputeBuffer(cloudRenderers.Length * 8, sizeof(float));
     }
 
     private void Update()
@@ -44,11 +51,23 @@ public class VolumetricCloudEffect : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (buffer != null) buffer.Release();
+        CleanBuffer();
     }
 
     void OnDisable()
     {
-        if (buffer != null) buffer.Release();
+        CleanBuffer();
+    }
+}
+
+[CustomEditor(typeof(VolumetricCloudManager))]
+class DVolumetricCloudManagerEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        VolumetricCloudManager manager = (VolumetricCloudManager)target;
+
+        if (GUILayout.Button("Generate"))
+            manager.GatherRenderers();
     }
 }
