@@ -32,6 +32,7 @@ Shader "Custom/VolumetricCloud"
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                float3 viewDir : TEXCOORD1;
             };
 
             struct planetData
@@ -75,6 +76,19 @@ Shader "Custom/VolumetricCloud"
                 return value;
             }
 
+            bool intersectSphere(float3 ro, float3 rd, float3 center, float radius, out float t0, out float t1)
+            {
+                float3 oc = ro - center;
+                float b = dot(oc, rd);
+                float c = dot(oc, oc) - radius * radius;
+                float h = b * b - c;
+                if (h < 0.0) return false;
+                h = sqrt(h);
+                t0 = -b - h;
+                t1 = -b + h;
+                return true;
+            }
+
             float fbm(float3 st)
             {
                 float v = 0.0;
@@ -100,18 +114,25 @@ Shader "Custom/VolumetricCloud"
 
             fixed4 volumetricMarch(float3 ro, float3 rd, planetData planet)
             {
-                float depth = 0.0;
+                // float depth = 0.0;
                 float3 color = float3(0.0, 0.0, 0.0);
                 float alpha = 0.0;
+
+                float t0, t1;
+                if (!intersectSphere(ro, rd, planet.center, planet.radius + planet.minMaxHeight.y, t0, t1))
+                    return 0;
+
+                t0 = max(t0, 0.0);
+                float depth = t0;
             
-                for (int i = 0; i < 100; i++)
+                for (int i = 0; i < 80; i++)
                 {
                     float3 p = ro + depth * rd;
                     float heightAboveSurface = length(p - planet.center) - planet.radius;
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
                     {
-                        float density = fbm(p * _Time * planet.speed);
+                        float density = fbm(p * _NoiseScale + _Time * planet.speed);
 
                         if (density > 0.001)
                         {
@@ -122,7 +143,7 @@ Shader "Custom/VolumetricCloud"
                         }
                     }
 
-                    depth += max(0.05, 0.02 * depth);
+                    depth += max(0.1, 0.02 * depth);
                 }
 
                 return fixed4(saturate(color), saturate(alpha));
@@ -133,6 +154,9 @@ Shader "Custom/VolumetricCloud"
                 v2f o;
                 o.uv = float2((id << 1) & 2, id & 2);
                 o.pos = float4(o.uv * float2(2, -2) + float2(-1, 1), 0, 1);
+
+                float3 viewVector = mul(unity_CameraInvProjection, float4(o.uv * 2 - 1, 0, -1));
+                o.viewDir = mul(unity_CameraToWorld, float4(viewVector, 0));
                 return o;
             }
 
@@ -145,15 +169,10 @@ Shader "Custom/VolumetricCloud"
 
                 fixed4 resultcolor = tex2D(_BlitTexture, i.uv);
 
-                // Construction du rayon en world space
-                float2 ndc = i.uv * 2.0 - 1.0;
-                float4 clip = float4(ndc, 1.0, 1.0);
-                float4 view = mul(unity_CameraInvProjection, clip);
-                view /= view.w;
-                float3 rd = normalize(mul((float3x3)unity_CameraToWorld, view.xyz));
+                float viewLength = length(i.viewDir);
+
                 float3 ro = _WorldSpaceCameraPos;
-                
-                fixed4 cloudColor = volumetricMarch(ro, rd, samplePlanetData(0));
+                float3 rd = i.viewDir / viewLength;
 
                 for (int i = 0; i < planetDataBuffer.Length / 8; i++)
                 {
