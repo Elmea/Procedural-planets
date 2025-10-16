@@ -30,13 +30,13 @@ public class VolumetricCloudRendererFeature : ScriptableRendererFeature
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 
             TextureHandle source = resourceData.activeColorTexture;
-            TextureDesc destinationDesc = renderGraph.GetTextureDesc(source);
 
+            TextureDesc destinationDesc = renderGraph.GetTextureDesc(source);
             destinationDesc.name = $"CameraColor-{m_passName}";
             destinationDesc.clearBuffer = false;
 
             TextureHandle destination = renderGraph.CreateTexture(destinationDesc);
-
+            
             RenderGraphUtils.BlitMaterialParameters para = new(source, destination, cloudMaterial, 0);
             renderGraph.AddBlitPass(para, passName: m_passName);
 

@@ -2,17 +2,18 @@ Shader "Custom/VolumetricCloud"
 {
     Properties
     {
-        _MainTex("Main Texture", 2DArray) = "grey" {}
-        _CloudColor("Cloud Color", Color) = (1,1,1,1)
+        _BlitTexture("Main Texture", 2D) = "white" {}   
 
+        _CloudColor("Cloud Color", Color) = (1,1,1,1)
         _Noise3D ("Noise3D", 3D) = "white" {}
         _NoiseScale ("Noise scale", float) = 32.0
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "Queue"="Overlay" }
-        Cull Off ZWrite Off ZTest Always
-
+        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"}
+        LOD 100
+        ZWrite Off Cull Off
+        
         Pass
         {
             CGPROGRAM
@@ -42,7 +43,8 @@ Shader "Custom/VolumetricCloud"
                 float speed;
             };
 
-            sampler2D _MainTex;
+            sampler2D _BlitTexture;
+
             fixed4 _CloudColor;
                 
             #define NUM_OCTAVES 5
@@ -130,7 +132,7 @@ Shader "Custom/VolumetricCloud"
             {
                 v2f o;
                 o.uv = float2((id << 1) & 2, id & 2);
-                o.pos = float4(o.uv * 2 - 1, 0, 1);
+                o.pos = float4(o.uv * float2(2, -2) + float2(-1, 1), 0, 1);
                 return o;
             }
 
@@ -138,12 +140,10 @@ Shader "Custom/VolumetricCloud"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // return fixed4 (1.0, 0.0, 0.0, 1.0);
-                // return tex2D(_MainTex, i.uv);
                 if (planetDataBuffer.Length == 0)
-                    return tex2D(_MainTex, i.uv);
+                    return tex2D(_BlitTexture, i.uv);
 
-                fixed4 resultcolor = tex2D(_MainTex, i.uv);
+                fixed4 resultcolor = tex2D(_BlitTexture, i.uv);
 
                 // Construction du rayon en world space
                 float2 ndc = i.uv * 2.0 - 1.0;
@@ -154,17 +154,13 @@ Shader "Custom/VolumetricCloud"
                 float3 ro = _WorldSpaceCameraPos;
                 
                 fixed4 cloudColor = volumetricMarch(ro, rd, samplePlanetData(0));
-                return cloudColor;
 
-                // #ifdef SHADER_API_D3D11
                 for (int i = 0; i < planetDataBuffer.Length / 8; i++)
                 {
                     planetData planet = samplePlanetData(i);
                     fixed4 cloudColor = volumetricMarch(ro, rd, planet);
-                    resultcolor.rgb = lerp(resultcolor.rgb, cloudColor.rgb, cloudColor.a * 0.6);
-                    // resultcolor = resultcolor * cloudColor;
+                    resultcolor.rgb = lerp(resultcolor.rgb, cloudColor.rgb, cloudColor.a);
                 }
-                // #endif
                 
                 return resultcolor;
             }
