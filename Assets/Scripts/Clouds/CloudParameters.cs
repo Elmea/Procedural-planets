@@ -6,6 +6,6 @@ public class CloudParameters : ScriptableObject
     public float planetRadius;
     public float minHeight;
     public float maxHeight;
-    public float thickness;
+    public float size;
     public float speed;
 }
