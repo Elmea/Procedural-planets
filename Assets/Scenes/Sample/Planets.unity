@@ -398,7 +398,7 @@ MonoBehaviour:
   _SplitPx: 2
   _MergePx: 1.4140000343322754
   _BudgetPerFrame: 16
-  _EnableCulling: 1
+  _EnableCulling: 0
   _EnableDebugQuad: 1
   _ChunkMaterial: {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
   _CullCamera: {fileID: 1419418092}
@@ -491,8 +491,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1419418090}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -9.87, y: 16100, z: -12.15}
+  m_LocalRotation: {x: 0.12175336, y: -0.04329426, z: 0.0053158663, w: 0.9916015}
+  m_LocalPosition: {x: 11291.6045, y: 11305.687, z: 1092.2806}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

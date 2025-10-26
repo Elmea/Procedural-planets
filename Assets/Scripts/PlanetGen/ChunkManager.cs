@@ -167,15 +167,20 @@ namespace PlanetGen
             foreach (var key in _ToActivate)
             {
                 var qt = _FaceQuadTrees[(int)key.Face];
+
                 var b = qt.GetWorldNodeBounds(key);
+                var qtb = qt.GetNodeBounds(key); // without rotation, for positioning 
+                
                 var chunk = GetChunk();
                 chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}_F{key.Face}";
                 chunk.transform.SetParent(transform, false);
-
                 chunk.transform.position = (float3)b.Center;
                 chunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
-
-                chunk.Initialize(_Resolution, b.Size, _ChunkMaterial);
+                
+                double3 qtNoRotCenter = qtb.Center;
+                qtNoRotCenter.y = _PlanetRadius;
+                qtNoRotCenter = math.normalize(qtNoRotCenter) * _PlanetRadius;
+                chunk.Initialize(_Resolution, b.Size, _ChunkMaterial, _PlanetRadius, qtb.Center, qtNoRotCenter);
 
                 var tris = SharedTrianglesCache.Get(_Resolution);
                 var h = chunk.ScheduleBuild(tris);
