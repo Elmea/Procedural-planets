@@ -1,4 +1,5 @@
 using Codice.Client.BaseCommands.Changelist;
+using System.IO;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
@@ -101,11 +102,19 @@ namespace PlanetGen
                 WarpFrequency = planetOptions.ContinentWarpFrequency,
 
                 SeaLevel = planetOptions.SeaLevel,
-                CoastWidth = planetOptions.CoastWidth,
-                OceanDepth = planetOptions.OceanDepth,
-                LandHeight = planetOptions.LandHeight,
+                SeaCoastWidth = planetOptions.SeaCoastWidth,
+                LandCoastWidth = planetOptions.LandCoastWidth,
 
-        Vertices = _Verts,
+                BaseLandLevel = planetOptions.BaseLandLevel,
+                LandMaxHeight = planetOptions.LandMaxHeight,
+
+                ShelfDepth = planetOptions.ShelfDepth,
+                ShelfPortion = planetOptions.ShelfPortion,
+                ShelfSharpness = planetOptions.ShelfSharpness,
+                OceanMaxDepth = planetOptions.OceanMaxDepth,
+                OceanPlateauDepth = planetOptions.OceanPlateauDepth,
+
+                Vertices = _Verts,
                 Normals = _Normals,
                 UVs = _Uvs,
                 Colors = _Colors,
@@ -162,10 +171,17 @@ namespace PlanetGen
             public float WarpFrequency;
 
             public float SeaLevel;
-            public float CoastWidth;
-            public float OceanDepth;
-            public float LandHeight;
-            public float AngularDelta;
+            public float SeaCoastWidth;
+            public float LandCoastWidth;
+
+            public float BaseLandLevel;
+            public float LandMaxHeight;
+
+            public float ShelfDepth;
+            public float ShelfPortion;
+            public float ShelfSharpness;
+            public float OceanPlateauDepth;
+            public float OceanMaxDepth;
 
             public NativeArray<float3> Vertices;
             public NativeArray<float2> UVs;
@@ -195,29 +211,34 @@ namespace PlanetGen
                 float continent = ContinentField(posMeters, PlanetRadius); // try to delimit continents
                 float coastlineOffset = CoastBreaker(posMeters, PlanetRadius);
 
-                continent += 0.05f * (coastlineOffset - 0.5f); // try to get more interesting coastlines
+                float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f)); // try to get more interesting coastlines
 
-                float landMask = MakeLandMask(continent, CoastWidth);
+                float landMask = MakeLandMask(continentWithCoastline);
 
-                //float3 ptWarp = Warp(noiseDir * 0.0005f * PlanetRadius, 2, 2);
-                //float baseField = FBM(ptWarp, 2, 4, 0.5f);
+                float land = CoastLandProfile(landMask, 0, BaseLandLevel);
+                float ocean = CoastOceanProfile(landMask, ShelfPortion, ShelfDepth, OceanPlateauDepth, ShelfSharpness);
 
                 float oceanFactor = 1f - landMask;
-                float ocean = -OceanDepth * (oceanFactor);
-                float land = LandHeight * landMask;
-
-                float elevation = ocean + land;
-
+                float elevation = math.lerp(ocean, land, landMask);
 
                 float3 p = dir * (PlanetRadius + elevation);
 
                 Vertices[index] = p - (float3)QuadTreeSphereNoRotCenter;
                 UVs[index] = new float2((float)fx, (float)fy);
-                if (continent < SeaLevel)
-                    Colors[index] = new float4(new float3(0f, 0.067f, 0.102f), 1.0f);
+                if (continentWithCoastline < SeaLevel)
+                {
+                    if (landMask > 0.0f)
+                        Colors[index] = new float4(new float3(0.714f, 0.651f, 0.435f), 1.0f);
+                    else
+                        Colors[index] = new float4(new float3(0f, 0.067f, 0.102f), 1.0f);
+                }
                 else
-                    Colors[index] = new float4(new float3(0.408f, 0.741f, 0.337f), 1.0f);
-
+                {
+                    if (landMask < 1.0f)
+                        Colors[index] = new float4(new float3(0.855f, 0.761f, 0.624f), 1.0f);
+                    else
+                        Colors[index] = new float4(new float3(0.408f, 0.741f, 0.337f), 1.0f);
+                }
             }
 
             float ContinentField(float3 posMeters, float planetRadiusMeters)
@@ -232,11 +253,40 @@ namespace PlanetGen
                 return height;
             }
 
-            float MakeLandMask(float continent, float coastWidth)
+            float MakeLandMask(float continent)
             {
-                float edgeMin = math.saturate(SeaLevel - 0.5f * coastWidth);
-                float edgeMax = math.saturate(SeaLevel + 0.5f * coastWidth);
+                float edgeMin = math.saturate(SeaLevel - 0.5f * SeaCoastWidth);
+                float edgeMax = math.saturate(SeaLevel + 0.5f * LandCoastWidth);
                 return math.smoothstep(edgeMin, edgeMax, continent);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static float CoastLandProfile(float m, float baseLand, float landRelief)
+            {
+                // m in [0..1]; push most of the relief inland using a smooth curve
+                float g = math.smoothstep(0f, 1f, m);
+                return baseLand + landRelief * g; // meters above sea
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static float CoastOceanProfile(float m, float shelfPortion, float shelfDepth, float oceanDepth, float sharpness)
+            {
+                // m in [0..1], oceanFactor is 1-m (0 = shore, 1 = far ocean)
+                float o = 1f - m;
+
+                // gentle shelf portion [0..shelfPortion] goes from 0..-shelfDepth with a smooth curve
+                float depthShelf;
+                if (o <= shelfPortion)
+                {
+                    float t = o / math.max(shelfPortion, 1e-6f);
+                    depthShelf = -shelfDepth * math.smoothstep(0f, 1f, t);
+                    return depthShelf; // still on the shelf
+                }
+
+                // beyond shelf: sharp fall to -OceanDepth
+                float t2 = (o - shelfPortion) / math.max(1f - shelfPortion, 1e-6f);
+                float w = math.pow(math.saturate(t2), math.max(sharpness, 1.0f));
+                return math.lerp(-shelfDepth, -oceanDepth, w);
             }
 
             // attempt to make a noise that looks like coastlines

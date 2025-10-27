@@ -19,6 +19,12 @@ MonoBehaviour:
   ContinentWarpAmplitude: 0.35
   ContinentWarpFrequency: 1.7
   SeaLevel: 0.5
-  CoastWidth: 0.08
-  OceanDepth: 200
-  LandHeight: 100
+  SeaCoastWidth: 0.08
+  LandCoastWidth: 0.02
+  BaseLandLevel: 10
+  LandMaxHeight: 100
+  ShelfDepth: 10
+  ShelfPortion: 0.3
+  ShelfSharpness: 3
+  OceanPlateauDepth: 100
+  OceanMaxDepth: 175
