@@ -43,6 +43,7 @@ Shader "Custom/VolumetricCloud"
             };
 
             sampler2D _BlitTexture;
+            sampler2D _CameraDepthTexture;
 
             fixed4 _CloudColor;
                 
@@ -117,6 +118,18 @@ Shader "Custom/VolumetricCloud"
                 return clamp(ret, 0.0, 1.0);
             }
 
+            float uvDepth;
+            bool DepthTest(float3 pos)
+            {
+                float4 clipPos = UnityObjectToClipPos(pos);
+                float zDepth = clipPos.z / clipPos.w;
+                #ifndef UNITY_REVERSED_Z // OpenGL
+                zDepth = zDepth * 0.5 + 0.5;
+                #endif
+
+                return zDepth > uvDepth;
+            }
+
             fixed4 volumetricMarch(float3 ro, float3 rd, planetData planet)
             {
                 float3 color = float3(0.0, 0.0, 0.0);
@@ -133,6 +146,10 @@ Shader "Custom/VolumetricCloud"
                 for (int i = 0; i < 120; i++)
                 {
                     float3 p = ro + depth * rd;
+                    
+                    if (!DepthTest(p))
+                        break;
+
                     float heightAboveSurface = length(p - planet.center) - planet.radius;
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
@@ -172,6 +189,8 @@ Shader "Custom/VolumetricCloud"
             {
                 if (planetDataBuffer.Length == 0)
                     return tex2D(_BlitTexture, i.uv);
+
+                uvDepth = tex2D(_CameraDepthTexture, i.uv);
 
                 fixed4 resultcolor = tex2D(_BlitTexture, i.uv);
 
