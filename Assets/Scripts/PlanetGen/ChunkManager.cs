@@ -32,6 +32,7 @@ namespace PlanetGen
         [SerializeField] private Material _ChunkMaterial;
         [SerializeField] private Camera _CullCamera;
         [SerializeField] private PlanetOptionsSO _OptionsSO;
+        [SerializeField] private bool _Enabled = true;
 
         private Dictionary<QuadNode, Chunk> _Chunks = new();
         private Stack<Chunk> _Pool = new(); // used as a stack for recycling chunks
@@ -114,7 +115,7 @@ namespace PlanetGen
 
         private void Update()
         {
-            if (_CullCamera == null)
+            if (_CullCamera == null || _Enabled == false)
                 return;
 
             for (int i = 0; i < _Handles.Count; i++)
@@ -167,13 +168,13 @@ namespace PlanetGen
 
                 var b = qt.GetWorldNodeBounds(key);
                 var qtb = qt.GetNodeBounds(key); // without rotation, for positioning 
-                
+
                 var chunk = GetChunk();
                 chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}_F{key.Face}";
                 chunk.transform.SetParent(transform, false);
-                chunk.transform.position = (float3)b.Center;
+                chunk.transform.localPosition = new Vector3((float)b.Center.x, (float)b.Center.y, (float)b.Center.z);
                 chunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
-                
+
                 double3 qtNoRotCenter = qtb.Center;
                 qtNoRotCenter.y = _PlanetRadius;
                 qtNoRotCenter = math.normalize(qtNoRotCenter) * _PlanetRadius;

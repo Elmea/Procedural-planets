@@ -195,9 +195,7 @@ namespace PlanetGen
                 float continent = ContinentField(posMeters, PlanetRadius); // try to delimit continents
                 float coastlineOffset = CoastBreaker(posMeters, PlanetRadius);
 
-                continent = math.lerp(continent, continent + 0.05f * (coastlineOffset - 0.5f), 
-                    math.smoothstep(SeaLevel - 0.1f, SeaLevel + 0.1f, continent));
-
+                continent += 0.05f * (coastlineOffset - 0.5f); // try to get more interesting coastlines
 
                 float landMask = MakeLandMask(continent, CoastWidth);
 
@@ -205,7 +203,7 @@ namespace PlanetGen
                 //float baseField = FBM(ptWarp, 2, 4, 0.5f);
 
                 float oceanFactor = 1f - landMask;
-                float ocean = -OceanDepth * (oceanFactor * oceanFactor);
+                float ocean = -OceanDepth * (oceanFactor);
                 float land = LandHeight * landMask;
 
                 float elevation = ocean + land;

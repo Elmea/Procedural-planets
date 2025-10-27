@@ -81,7 +81,7 @@ namespace Assets.Scripts.PlanetGen
         public QuadNodeBounds GetWorldNodeBounds(QuadNode node)
         {
             QuadNodeBounds b = GetNodeBounds(node);
-            Vector3 center = _QuadTreeMatrix * new float4(_TerrainTransform.TransformPoint((float3)b.Center), 1);
+            Vector3 center = _QuadTreeMatrix * new float4(((float3)b.Center), 1);
             center = center.normalized * (float)_RootSize * 0.5f; // project to sphere surface
             b.Center = (float3)center;
             return b;
@@ -115,6 +115,7 @@ namespace Assets.Scripts.PlanetGen
         {
             QuadNodeBounds worldBounds = GetWorldNodeBounds(key);
             Vector3 worldCenter = (float3)worldBounds.Center;
+            worldCenter = _TerrainTransform.TransformPoint(worldCenter);
             var aabb = new Bounds(
                 worldCenter,
                 new Vector3((float)worldBounds.Size, (float)worldBounds.Size, (float)worldBounds.Size)); // random high height
