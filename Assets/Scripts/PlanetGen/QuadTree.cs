@@ -105,33 +105,31 @@ namespace Assets.Scripts.PlanetGen
         {
             _BoundsToDraw.Clear();
             var root = new QuadNode { Coords = new int2(0, 0), Depth = 0, Face = _HandledFace };
-            var rootBounds = GetNodeBounds(root);
-            TraverseTree(camPos, frustumPlanes, root, rootBounds, activeNodes, outLeaves, ref budget);
+            TraverseTree(camPos, frustumPlanes, root, activeNodes, outLeaves, ref budget);
         }
 
         private void TraverseTree(
             Vector3 camPos, Plane[] frustumPlanes,
-            QuadNode key, QuadNodeBounds b, HashSet<QuadNode> activeNodes,
+            QuadNode key, HashSet<QuadNode> activeNodes,
             List<QuadNode> leaves, ref int budget)
         {
-            Vector3 worldCenter = _QuadTreeMatrix * new float4(_TerrainTransform.TransformPoint((float3)b.Center), 1);
-            worldCenter = worldCenter.normalized * (float)_RootSize * 0.5f; // project to sphere surface
+            QuadNodeBounds worldBounds = GetWorldNodeBounds(key);
+            Vector3 worldCenter = (float3)worldBounds.Center;
             var aabb = new Bounds(
                 worldCenter,
-                new Vector3((float)b.Size, (float)b.Size, (float)b.Size)); // random high height
+                new Vector3((float)worldBounds.Size, (float)worldBounds.Size, (float)worldBounds.Size)); // random high height
             _BoundsToDraw.Add(aabb);
             if (_EnableCulling && !GeometryUtility.TestPlanesAABB(frustumPlanes, aabb))
                 return;
 
             float dist = Vector3.Distance(camPos, worldCenter);
 
-            bool canSplit = b.Size > _MinLeafSize && budget > 0;
-            bool wantSplit = canSplit && (dist < b.Size * SplitDistanceFactor);
+            bool canSplit = worldBounds.Size > _MinLeafSize && budget > 0;
+            bool wantSplit = canSplit && (dist < worldBounds.Size * SplitDistanceFactor);
 
             if (wantSplit)
             {
-
-                double childSize = b.Size * 0.5;
+                double childSize = worldBounds.Size * 0.5;
                 double h = childSize * 0.5;
                 int d1 = key.Depth + 1;
 
@@ -140,11 +138,6 @@ namespace Assets.Scripts.PlanetGen
                     Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     topLeftNode,
-                    new QuadNodeBounds
-                    {
-                        Center = b.Center + new double3(-h, 0f, +h),
-                        Size = childSize
-                    },
                     activeNodes, leaves, ref budget
                 );
 
@@ -153,11 +146,6 @@ namespace Assets.Scripts.PlanetGen
                     Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     topRightNode,
-                    new QuadNodeBounds
-                    {
-                        Center = b.Center + new double3(+h, 0f, +h),
-                        Size = childSize
-                    },
                     activeNodes, leaves, ref budget
                 );
 
@@ -166,11 +154,6 @@ namespace Assets.Scripts.PlanetGen
                     Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     bottomLeftNode,
-                    new QuadNodeBounds
-                    {
-                        Center = b.Center + new double3(-h, 0f, -h),
-                        Size = childSize
-                    },
                     activeNodes, leaves, ref budget
                 );
 
@@ -179,11 +162,6 @@ namespace Assets.Scripts.PlanetGen
                     Depth = d1, Face = _HandledFace };
                 TraverseTree(camPos, frustumPlanes,
                     bottomRightNode,
-                    new QuadNodeBounds
-                    {
-                        Center = b.Center + new double3(+h, 0f, -h),
-                        Size = childSize
-                    },
                     activeNodes, leaves, ref budget
                 );
             }

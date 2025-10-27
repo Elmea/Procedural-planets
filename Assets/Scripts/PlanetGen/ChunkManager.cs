@@ -30,8 +30,8 @@ namespace PlanetGen
 
         [Header("")]
         [SerializeField] private Material _ChunkMaterial;
-        // for culling and LOD
         [SerializeField] private Camera _CullCamera;
+        [SerializeField] private PlanetOptionsSO _OptionsSO;
 
         private Dictionary<QuadNode, Chunk> _Chunks = new();
         private Stack<Chunk> _Pool = new(); // used as a stack for recycling chunks
@@ -164,21 +164,23 @@ namespace PlanetGen
             foreach (var key in _ToActivate)
             {
                 var qt = _FaceQuadTrees[(int)key.Face];
+
                 var b = qt.GetWorldNodeBounds(key);
-                var qtb = qt.GetNodeBounds(key); // without rotation, for positioning
+                var qtb = qt.GetNodeBounds(key); // without rotation, for positioning 
+                
                 var chunk = GetChunk();
                 chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}_F{key.Face}";
                 chunk.transform.SetParent(transform, false);
-
                 chunk.transform.position = (float3)b.Center;
                 chunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
+                
                 double3 qtNoRotCenter = qtb.Center;
                 qtNoRotCenter.y = _PlanetRadius;
                 qtNoRotCenter = math.normalize(qtNoRotCenter) * _PlanetRadius;
                 chunk.Initialize(_Resolution, b.Size, _ChunkMaterial, _PlanetRadius, qtb.Center, qtNoRotCenter);
 
                 var tris = SharedTrianglesCache.Get(_Resolution);
-                var h = chunk.ScheduleBuild(tris);
+                var h = chunk.ScheduleBuild(tris, _OptionsSO);
                 _Handles.Add(h);
 
                 _Chunks[key] = chunk;
