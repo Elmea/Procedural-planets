@@ -374,7 +374,7 @@ Transform:
   m_GameObject: {fileID: 948995996}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -51629.44, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -401,7 +401,7 @@ MonoBehaviour:
   _ChunkMaterial: {fileID: -876546973899608171, guid: a0529685b7569d14c8c45a70f880738f, type: 3}
   _CullCamera: {fileID: 1419418092}
   _OptionsSO: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
-  _Enabled: 0
+  _Enabled: 1
 --- !u!1 &1419418090
 GameObject:
   m_ObjectHideFlags: 0
