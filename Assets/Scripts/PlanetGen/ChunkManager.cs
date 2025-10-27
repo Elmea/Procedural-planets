@@ -24,17 +24,14 @@ namespace PlanetGen
         [Header("QuadTree Settings")]
         [SerializeField] private float _PlanetRadius = 16000f;
         [SerializeField] private float _MinLeafSize = 128f;
-        [SerializeField] private double _SplitPx = 2.0f; // if projected size > SplitPx, split
-        [SerializeField] private double _MergePx = 1.414f;
         [SerializeField] private int _BudgetPerFrame = 32; // max nodes to split/merge per frame
         [SerializeField] private bool _EnableCulling = false;
         [SerializeField] private bool _EnableDebugQuad = false;
 
         [Header("")]
         [SerializeField] private Material _ChunkMaterial;
-        // for culling and LOD
         [SerializeField] private Camera _CullCamera;
-        [SerializeField] private double _MaxChunkHeightCoef = 0.5; // 0.5 because 0.414 for from center of cube face to heighest point on sphere and some error boost to 0.5
+        [SerializeField] private PlanetOptionsSO _OptionsSO;
 
         private Dictionary<QuadNode, Chunk> _Chunks = new();
         private Stack<Chunk> _Pool = new(); // used as a stack for recycling chunks
@@ -183,7 +180,7 @@ namespace PlanetGen
                 chunk.Initialize(_Resolution, b.Size, _ChunkMaterial, _PlanetRadius, qtb.Center, qtNoRotCenter);
 
                 var tris = SharedTrianglesCache.Get(_Resolution);
-                var h = chunk.ScheduleBuild(tris);
+                var h = chunk.ScheduleBuild(tris, _OptionsSO);
                 _Handles.Add(h);
 
                 _Chunks[key] = chunk;

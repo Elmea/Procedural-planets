@@ -395,14 +395,12 @@ MonoBehaviour:
   _Resolution: 128
   _PlanetRadius: 16000
   _MinLeafSize: 128
-  _SplitPx: 2
-  _MergePx: 1.4140000343322754
   _BudgetPerFrame: 16
   _EnableCulling: 0
   _EnableDebugQuad: 1
-  _ChunkMaterial: {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  _ChunkMaterial: {fileID: -876546973899608171, guid: a0529685b7569d14c8c45a70f880738f, type: 3}
   _CullCamera: {fileID: 1419418092}
-  _MaxChunkHeightCoef: 0.5
+  _OptionsSO: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
 --- !u!1 &1419418090
 GameObject:
   m_ObjectHideFlags: 0
@@ -491,8 +489,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1419418090}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.12175336, y: -0.04329426, z: 0.0053158663, w: 0.9916015}
-  m_LocalPosition: {x: 11291.6045, y: 11305.687, z: 1092.2806}
+  m_LocalRotation: {x: -0.0209762, y: 0.9513937, z: -0.29997334, w: -0.066528}
+  m_LocalPosition: {x: -499, y: 15827, z: 2529}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
