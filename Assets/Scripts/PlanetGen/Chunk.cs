@@ -213,10 +213,11 @@ namespace PlanetGen
 
                 float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f)); // try to get more interesting coastlines
 
+                // 0 to 1 land mask
                 float landMask = MakeLandMask(continentWithCoastline);
 
-                float land = CoastLandProfile(landMask, 0, BaseLandLevel);
-                float ocean = CoastOceanProfile(landMask, ShelfPortion, ShelfDepth, OceanPlateauDepth, ShelfSharpness);
+                float land = CoastLandProfile(landMask);
+                float ocean = CoastOceanProfile(landMask);
 
                 float oceanFactor = 1f - landMask;
                 float elevation = math.lerp(ocean, land, landMask);
@@ -261,32 +262,29 @@ namespace PlanetGen
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static float CoastLandProfile(float m, float baseLand, float landRelief)
+            float CoastLandProfile(float landMask)
             {
-                // m in [0..1]; push most of the relief inland using a smooth curve
-                float g = math.smoothstep(0f, 1f, m);
-                return baseLand + landRelief * g; // meters above sea
+                float gradient = math.smoothstep(0f, 1f, landMask); // smoother 0 to 1
+                return BaseLandLevel * gradient; // meters above sea
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static float CoastOceanProfile(float m, float shelfPortion, float shelfDepth, float oceanDepth, float sharpness)
+            float CoastOceanProfile(float landMask)
             {
-                // m in [0..1], oceanFactor is 1-m (0 = shore, 1 = far ocean)
-                float o = 1f - m;
+                float oceanFactor = 1f - landMask;
 
-                // gentle shelf portion [0..shelfPortion] goes from 0..-shelfDepth with a smooth curve
+                // fall off between 0 to shelfPortion/-shelfDepth
                 float depthShelf;
-                if (o <= shelfPortion)
+                if (oceanFactor <= ShelfPortion)
                 {
-                    float t = o / math.max(shelfPortion, 1e-6f);
-                    depthShelf = -shelfDepth * math.smoothstep(0f, 1f, t);
+                    float t = oceanFactor / math.max(ShelfPortion, 1e-6f);
+                    depthShelf = -ShelfDepth * math.smoothstep(0f, 1f, t);
                     return depthShelf; // still on the shelf
                 }
 
-                // beyond shelf: sharp fall to -OceanDepth
-                float t2 = (o - shelfPortion) / math.max(1f - shelfPortion, 1e-6f);
-                float w = math.pow(math.saturate(t2), math.max(sharpness, 1.0f));
-                return math.lerp(-shelfDepth, -oceanDepth, w);
+                float t2 = (oceanFactor - ShelfPortion) / math.max(1f - ShelfPortion, 1e-6f);
+                float finalCoef = math.pow(math.saturate(t2), math.max(ShelfSharpness, 1.0f));
+                return math.lerp(-ShelfDepth, -OceanPlateauDepth, finalCoef);
             }
 
             // attempt to make a noise that looks like coastlines
