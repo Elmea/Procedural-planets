@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PlanetTestOptions
   m_EditorClassIdentifier: 
   ContinentWavelength: 2.5
-  ContinentLacunarity: 1.95
+  ContinentLacunarity: 2
   ContinentPersistence: 0.5
   ContinentOctaves: 5
   ContinentWarpAmplitude: 0.35
@@ -28,3 +28,21 @@ MonoBehaviour:
   ShelfSharpness: 3
   OceanPlateauDepth: 100
   OceanMaxDepth: 175
+  DetailStartMask: 0.35
+  DetailRampMask: 0.15
+  HillsWavelength: 0.5
+  HillsOctaves: 4
+  HillsPersistence: 0.5
+  HillsLacunarity: 2
+  HillsWarpAmplitude: 0.2
+  HillsWarpFrequency: 1.7
+  HillsAmplitudeMeters: 1000
+  MountainThreshold: 0.35
+  MountainRamp: 0.1
+  MountainWavelength: 0.06
+  MountainOctaves: 5
+  MountainGain: 0.5
+  MountainLacunarity: 2
+  MountainWarpAmplitude: 0.15
+  MountainWarpFrequency: 2.3
+  MountainAmplitudeMeters: 180
