@@ -19,8 +19,8 @@ MonoBehaviour:
   ContinentWarpAmplitude: 0.35
   ContinentWarpFrequency: 1.7
   SeaLevel: 0.5
-  SeaCoastWidth: 0.08
-  LandCoastWidth: 0.02
+  SeaCoastLimit: 0.46
+  LandCoastLimit: 0.54
   BaseLandLevel: 10
   LandMaxHeight: 100
   ShelfDepth: 10
@@ -28,15 +28,14 @@ MonoBehaviour:
   ShelfSharpness: 3
   OceanPlateauDepth: 100
   OceanMaxDepth: 175
-  DetailStartMask: 0.35
-  DetailRampMask: 0.15
-  HillsWavelength: 0.5
-  HillsOctaves: 4
+  LandHillRampLimit: 0.63
+  HillsWavelength: 0.1
+  HillsOctaves: 5
   HillsPersistence: 0.5
   HillsLacunarity: 2
   HillsWarpAmplitude: 0.2
   HillsWarpFrequency: 1.7
-  HillsAmplitudeMeters: 1000
+  HillsAmplitudeMeters: 75
   MountainThreshold: 0.35
   MountainRamp: 0.1
   MountainWavelength: 0.06

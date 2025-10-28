@@ -104,8 +104,8 @@ namespace PlanetGen
 
                 // Land/Ocean basic settings
                 SeaLevel = planetOptions.SeaLevel,
-                SeaCoastWidth = planetOptions.SeaCoastWidth,
-                LandCoastWidth = planetOptions.LandCoastWidth,
+                SeaCoastLimit = planetOptions.SeaCoastLimit,
+                LandCoastLimit = planetOptions.LandCoastLimit,
 
                 BaseLandLevel = planetOptions.BaseLandLevel,
                 LandMaxHeight = planetOptions.LandMaxHeight,
@@ -117,24 +117,19 @@ namespace PlanetGen
                 OceanPlateauDepth = planetOptions.OceanPlateauDepth,
 
                 // Inland settings
-                DetailStartMask = planetOptions.DetailStartMask,
-                DetailRampMask = planetOptions.DetailRampMask,
+                LandHillRampLimit = planetOptions.LandHillRampLimit,
                 HillsWavelength = planetOptions.HillsWavelength,
                 HillsOctaves = planetOptions.HillsOctaves,
                 HillsPersistence = planetOptions.HillsPersistence,
                 HillsLacunarity = planetOptions.HillsLacunarity,
-                HillsWarpAmplitude = planetOptions.HillsWarpAmplitude,
-                HillsWarpFrequency = planetOptions.HillsWarpFrequency,
                 HillsAmplitudeMeters = planetOptions.HillsAmplitudeMeters,
 
-                MountainThreshold = planetOptions.MountainThreshold,
-                MountainRamp = planetOptions.MountainRamp,
+                MountainStart = planetOptions.MountainStart,
+                MountainRampLimit = planetOptions.MountainRampLimit,
                 MountainWavelength = planetOptions.MountainWavelength,
                 MountainOctaves = planetOptions.MountainOctaves,
                 MountainGain = planetOptions.MountainGain,
                 MountainLacunarity = planetOptions.MountainLacunarity,
-                MountainWarpAmplitude = planetOptions.MountainWarpAmplitude,
-                MountainWarpFrequency = planetOptions.MountainWarpFrequency,
                 MountainAmplitudeMeters = planetOptions.MountainAmplitudeMeters,
 
                 Vertices = _Verts,
@@ -194,8 +189,8 @@ namespace PlanetGen
             public float WarpFrequency;
 
             public float SeaLevel;
-            public float SeaCoastWidth;
-            public float LandCoastWidth;
+            public float SeaCoastLimit;
+            public float LandCoastLimit;
 
             public float BaseLandLevel;
             public float LandMaxHeight;
@@ -206,24 +201,19 @@ namespace PlanetGen
             public float OceanPlateauDepth;
             public float OceanMaxDepth;
 
-            public float DetailStartMask;
-            public float DetailRampMask;
+            public float LandHillRampLimit;
             public float HillsWavelength;
             public int HillsOctaves;
             public float HillsPersistence;
             public float HillsLacunarity;
-            public float HillsWarpAmplitude;
-            public float HillsWarpFrequency;
             public float HillsAmplitudeMeters;
 
-            public float MountainThreshold;
-            public float MountainRamp;
+            public float MountainStart;
+            public float MountainRampLimit;
             public float MountainWavelength;
             public int MountainOctaves;
             public float MountainGain;
             public float MountainLacunarity;
-            public float MountainWarpAmplitude;
-            public float MountainWarpFrequency;
             public float MountainAmplitudeMeters;
 
             public NativeArray<float3> Vertices;
@@ -255,21 +245,16 @@ namespace PlanetGen
                 float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f)); // try to get more interesting coastlines
 
                 // 0 to 1 land mask
-                float landMask = MakeLandMask(continentWithCoastline);
-
+                float landMask = math.smoothstep(SeaCoastLimit, LandCoastLimit, continentWithCoastline);
                 float land = CoastLandProfile(landMask);
 
-                //if (landMask >= 1.0f)
-                //{
-                //    float hillHeight = HillsField(posMeters);
-                //    hillHeight = math.saturate(hillHeight) * HillsAmplitudeMeters;
-                //    //float mountainMask = MountainMask(continent);
-                //    //float mountainHeight = MountainsField(posMeters) * MountainAmplitudeMeters;
-                //    //land += landMask * (hillHeight + mountainMask * mountainHeight);
-                //    land += hillHeight;
-                //}
+                float hillsMask = math.smoothstep(LandCoastLimit, LandHillRampLimit, continentWithCoastline);
+                land = HillsField(posMeters, land, hillsMask);
 
-                float ocean = CoastOceanProfile(landMask);
+                float mountainsMask = math.smoothstep(MountainStart, MountainRampLimit, continentWithCoastline);
+                land = MountainsField(posMeters, land, mountainsMask);
+
+                float ocean = OceanProfile(landMask);
 
                 float oceanFactor = 1f - landMask;
                 float elevation = math.lerp(ocean, land, landMask);
@@ -291,7 +276,7 @@ namespace PlanetGen
                         Colors[index] = new float4(new float3(0.855f, 0.761f, 0.624f), 1.0f);
                     else
                     {
-                        if (continent > 0.7f)
+                        if (continentWithCoastline > 0.7f)
                             Colors[index] = new float4(new float3(1f), 1.0f);
                         else
                             Colors[index] = new float4(new float3(0.408f, 0.741f, 0.337f), 1.0f);
@@ -311,26 +296,13 @@ namespace PlanetGen
                 return height;
             }
 
-            float MakeLandMask(float continent)
-            {
-                float edgeMin = math.saturate(SeaLevel - 0.5f * SeaCoastWidth);
-                float edgeMax = math.saturate(SeaLevel + 0.5f * LandCoastWidth);
-                return math.smoothstep(edgeMin, edgeMax, continent);
-            }
-
-            //float MountainMask(float continent)
-            //{
-            //    float coef = continent - SeaLevel;
-            //    return math.smoothstep(MountainThreshold - MountainRamp, MountainThreshold + MountainRamp, coef);
-            //}
-
             float CoastLandProfile(float landMask)
             {
                 float gradient = math.smoothstep(0f, 1f, landMask); // smoother 0 to 1
                 return BaseLandLevel * gradient; // meters above sea
             }
 
-            float CoastOceanProfile(float landMask)
+            float OceanProfile(float landMask)
             {
                 float oceanFactor = 1f - landMask;
 
@@ -361,22 +333,26 @@ namespace PlanetGen
                 return r;
             }
 
-            float HillsField(float3 posMeters)
+            float HillsField(float3 posMeters, float coastValue, float hillsMask)
             {
                 float hillsWavelength = PlanetRadius * HillsWavelength;
                 float baseFreq = 1f / math.max(hillsWavelength, 1e-6f);
                 float3 pt = posMeters * baseFreq;
                 //float3 ptWarped = Warp(pt, HillsWarpAmplitude, HillsWarpFrequency);
-                return FBM(pt, HillsLacunarity, HillsOctaves, HillsPersistence);
+                float hillsValue = FBM(pt, HillsLacunarity, HillsOctaves, HillsPersistence) * HillsAmplitudeMeters + BaseLandLevel;
+
+                return math.lerp(coastValue, hillsValue, hillsMask);
             }
 
-            float MountainsField(float3 posMeters)
+            float MountainsField(float3 posMeters, float hillsValue, float mountainsMask)
             {
                 float mountainWavelength = PlanetRadius * MountainWavelength;
                 float baseFreq = 1f / math.max(mountainWavelength, 1e-6f);
                 float3 pt = posMeters * baseFreq;
-                float3 ptWarped = Warp(pt, MountainWarpAmplitude, MountainWarpFrequency);
-                return RidgedFBM(ptWarped, MountainLacunarity, MountainOctaves, MountainGain);
+                //float3 ptWarped = Warp(pt, MountainWarpAmplitude, MountainWarpFrequency);
+                float mountainsValue = RidgedFBM(pt, MountainLacunarity, MountainOctaves, MountainGain) * MountainAmplitudeMeters + hillsValue;
+
+                return math.lerp(hillsValue, mountainsValue, mountainsMask);
             }
 
             // FBM between 0 and 1
