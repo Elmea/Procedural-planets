@@ -94,6 +94,7 @@ namespace PlanetGen
                 WorldPos = (float3)transform.position,
                 WorldRot = (quaternion)transform.rotation,
 
+                // Continent settings
                 ContinentWavelength = planetOptions.ContinentWavelength,
                 ContinentLacunarity = planetOptions.ContinentLacunarity,
                 ContinentPersistence = planetOptions.ContinentPersistence,
@@ -101,6 +102,7 @@ namespace PlanetGen
                 WarpAmplitude = planetOptions.ContinentWarpAmplitude,
                 WarpFrequency = planetOptions.ContinentWarpFrequency,
 
+                // Land/Ocean basic settings
                 SeaLevel = planetOptions.SeaLevel,
                 SeaCoastWidth = planetOptions.SeaCoastWidth,
                 LandCoastWidth = planetOptions.LandCoastWidth,
@@ -113,6 +115,27 @@ namespace PlanetGen
                 ShelfSharpness = planetOptions.ShelfSharpness,
                 OceanMaxDepth = planetOptions.OceanMaxDepth,
                 OceanPlateauDepth = planetOptions.OceanPlateauDepth,
+
+                // Inland settings
+                DetailStartMask = planetOptions.DetailStartMask,
+                DetailRampMask = planetOptions.DetailRampMask,
+                HillsWavelength = planetOptions.HillsWavelength,
+                HillsOctaves = planetOptions.HillsOctaves,
+                HillsPersistence = planetOptions.HillsPersistence,
+                HillsLacunarity = planetOptions.HillsLacunarity,
+                HillsWarpAmplitude = planetOptions.HillsWarpAmplitude,
+                HillsWarpFrequency = planetOptions.HillsWarpFrequency,
+                HillsAmplitudeMeters = planetOptions.HillsAmplitudeMeters,
+
+                MountainThreshold = planetOptions.MountainThreshold,
+                MountainRamp = planetOptions.MountainRamp,
+                MountainWavelength = planetOptions.MountainWavelength,
+                MountainOctaves = planetOptions.MountainOctaves,
+                MountainGain = planetOptions.MountainGain,
+                MountainLacunarity = planetOptions.MountainLacunarity,
+                MountainWarpAmplitude = planetOptions.MountainWarpAmplitude,
+                MountainWarpFrequency = planetOptions.MountainWarpFrequency,
+                MountainAmplitudeMeters = planetOptions.MountainAmplitudeMeters,
 
                 Vertices = _Verts,
                 Normals = _Normals,
@@ -183,6 +206,26 @@ namespace PlanetGen
             public float OceanPlateauDepth;
             public float OceanMaxDepth;
 
+            public float DetailStartMask;
+            public float DetailRampMask;
+            public float HillsWavelength;
+            public int HillsOctaves;
+            public float HillsPersistence;
+            public float HillsLacunarity;
+            public float HillsWarpAmplitude;
+            public float HillsWarpFrequency;
+            public float HillsAmplitudeMeters;
+
+            public float MountainThreshold;
+            public float MountainRamp;
+            public float MountainWavelength;
+            public int MountainOctaves;
+            public float MountainGain;
+            public float MountainLacunarity;
+            public float MountainWarpAmplitude;
+            public float MountainWarpFrequency;
+            public float MountainAmplitudeMeters;
+
             public NativeArray<float3> Vertices;
             public NativeArray<float2> UVs;
             public NativeArray<float3> Normals;
@@ -204,11 +247,9 @@ namespace PlanetGen
                 float3 dir = math.normalize((float3)planetPoint);
 
                 float3 noiseDir = math.mul(WorldRot, dir); // to have a 3d noise that wraps around the sphere instead of local to the face
-                //float baseHeight = FMB(noiseDir * Frequency * PlanetRadius, Lacunarity, Octaves, Persistence);
-                //float height = baseHeight * Amplitude;
 
                 float3 posMeters = noiseDir * PlanetRadius; // pos at scale
-                float continent = ContinentField(posMeters, PlanetRadius); // try to delimit continents
+                float continent = ContinentField(posMeters); // try to delimit continents
                 float coastlineOffset = CoastBreaker(posMeters, PlanetRadius);
 
                 float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f)); // try to get more interesting coastlines
@@ -217,6 +258,17 @@ namespace PlanetGen
                 float landMask = MakeLandMask(continentWithCoastline);
 
                 float land = CoastLandProfile(landMask);
+
+                //if (landMask >= 1.0f)
+                //{
+                //    float hillHeight = HillsField(posMeters);
+                //    hillHeight = math.saturate(hillHeight) * HillsAmplitudeMeters;
+                //    //float mountainMask = MountainMask(continent);
+                //    //float mountainHeight = MountainsField(posMeters) * MountainAmplitudeMeters;
+                //    //land += landMask * (hillHeight + mountainMask * mountainHeight);
+                //    land += hillHeight;
+                //}
+
                 float ocean = CoastOceanProfile(landMask);
 
                 float oceanFactor = 1f - landMask;
@@ -238,18 +290,23 @@ namespace PlanetGen
                     if (landMask < 1.0f)
                         Colors[index] = new float4(new float3(0.855f, 0.761f, 0.624f), 1.0f);
                     else
-                        Colors[index] = new float4(new float3(0.408f, 0.741f, 0.337f), 1.0f);
+                    {
+                        if (continent > 0.7f)
+                            Colors[index] = new float4(new float3(1f), 1.0f);
+                        else
+                            Colors[index] = new float4(new float3(0.408f, 0.741f, 0.337f), 1.0f);
+                    }
                 }
             }
 
-            float ContinentField(float3 posMeters, float planetRadiusMeters)
+            float ContinentField(float3 posMeters)
             {
-                float continentWavelength = planetRadiusMeters * ContinentWavelength;
+                float continentWavelength = PlanetRadius * ContinentWavelength;
                 float baseFreq = 1f / continentWavelength;
 
                 float3 pt = posMeters * baseFreq;
                 float3 ptWarped = Warp(pt, WarpAmplitude, WarpFrequency);
-                float height = ContinentFBM(ptWarped, ContinentLacunarity, ContinentOctaves, ContinentPersistence);
+                float height = FBM(ptWarped, ContinentLacunarity, ContinentOctaves, ContinentPersistence);
 
                 return height;
             }
@@ -261,14 +318,18 @@ namespace PlanetGen
                 return math.smoothstep(edgeMin, edgeMax, continent);
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            //float MountainMask(float continent)
+            //{
+            //    float coef = continent - SeaLevel;
+            //    return math.smoothstep(MountainThreshold - MountainRamp, MountainThreshold + MountainRamp, coef);
+            //}
+
             float CoastLandProfile(float landMask)
             {
                 float gradient = math.smoothstep(0f, 1f, landMask); // smoother 0 to 1
                 return BaseLandLevel * gradient; // meters above sea
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             float CoastOceanProfile(float landMask)
             {
                 float oceanFactor = 1f - landMask;
@@ -300,32 +361,54 @@ namespace PlanetGen
                 return r;
             }
 
-            static float ContinentFBM(float3 pt, float lacunarity, int octave, float persistence)
+            float HillsField(float3 posMeters)
             {
-                float a = 1f, sum = 0f, amplitude = 0f;
-                float3 q = pt;
-                for (int i = 0; i < octave; i++)
-                {
-                    sum += a * (1f - (noise.snoise(q) * 0.5f + 0.5f));
-                    amplitude += a;
-                    q *= lacunarity;
-                    a *= persistence;
-                }
-                return sum / math.max(amplitude, 1e-6f);
+                float hillsWavelength = PlanetRadius * HillsWavelength;
+                float baseFreq = 1f / math.max(hillsWavelength, 1e-6f);
+                float3 pt = posMeters * baseFreq;
+                //float3 ptWarped = Warp(pt, HillsWarpAmplitude, HillsWarpFrequency);
+                return FBM(pt, HillsLacunarity, HillsOctaves, HillsPersistence);
             }
 
+            float MountainsField(float3 posMeters)
+            {
+                float mountainWavelength = PlanetRadius * MountainWavelength;
+                float baseFreq = 1f / math.max(mountainWavelength, 1e-6f);
+                float3 pt = posMeters * baseFreq;
+                float3 ptWarped = Warp(pt, MountainWarpAmplitude, MountainWarpFrequency);
+                return RidgedFBM(ptWarped, MountainLacunarity, MountainOctaves, MountainGain);
+            }
+
+            // FBM between 0 and 1
             static float FBM(float3 pt, float lacunarity, int octaves, float persistence)
             {
                 float a = 1f;
                 float amplitude = 0f;
                 float sum = 0f;
-                float3 q = pt * lacunarity;
+                float3 q = pt;
                 for (int i = 0; i < octaves; i++)
                 {
-                    sum += a * (noise.snoise(q) * 0.5f + 0.5f);
+                    sum += a * noise.snoise(q);
                     amplitude += a;
-                    q *= 2f;
+                    q *= lacunarity;
                     a *= persistence;
+                }
+                return (sum / math.max(amplitude, 1e-6f)) * 0.5f + 0.5f;
+            }
+
+            static float RidgedFBM(float3 pt, float lacunarity, int octaves, float gain)
+            {
+                float a = 1f;
+                float amplitude = 0f;
+                float sum = 0f;
+                float3 q = pt;
+                for (int i = 0; i < octaves; i++)
+                {
+                    float n = 1f - math.abs(noise.snoise(q));
+                    sum += a * n;
+                    amplitude += a;
+                    q *= lacunarity;
+                    a *= gain;
                 }
                 return sum / math.max(amplitude, 1e-6f);
             }
