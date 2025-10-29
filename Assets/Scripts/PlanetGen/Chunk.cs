@@ -20,6 +20,8 @@ namespace PlanetGen
         private MeshFilter _MeshFilter;
         private MeshRenderer _MeshRenderer;
 
+        private bool _IsWater;
+
         private Mesh.MeshDataArray _MeshDataArray;
         private Mesh.MeshData _MeshData;
 
@@ -32,7 +34,9 @@ namespace PlanetGen
         double3 _QuadTreeBoundsCenter;
         double3 _QuadTreeSphereNoRotCenter;
 
-        public void Initialize(int resolution, double chunkSize, Material mat, float planetRadius, double3 qtCenter, double3 qtSphereNoRotCenter)
+        public void Initialize(int resolution, double chunkSize, 
+            Material mat, bool isWater,
+            float planetRadius, double3 qtCenter, double3 qtSphereNoRotCenter)
         {
             _Resolution = math.max(2, resolution);
             _Size = math.max(1f, chunkSize);
@@ -47,6 +51,7 @@ namespace PlanetGen
             _PlanetRadius = planetRadius;
             _QuadTreeBoundsCenter = qtCenter;
             _QuadTreeSphereNoRotCenter = qtSphereNoRotCenter;
+            _IsWater = isWater;
         }
 
         public void Dispose()
@@ -83,62 +88,97 @@ namespace PlanetGen
             _MeshData.subMeshCount = 1;
             _MeshData.SetSubMesh(0, new SubMeshDescriptor(0, indexCount, MeshTopology.Triangles));
 
-            // Schedule the vertex job
-            var job = new BuildChunkMeshJob
+            int workerCount;
+            try
             {
-                Resolution = _Resolution,
-                Size = _Size,
-                PlanetRadius = _PlanetRadius,
-                QuadTreeSphereNoRotCenter = _QuadTreeSphereNoRotCenter,
-                QuadTreeBoundsCenter = _QuadTreeBoundsCenter,
-                WorldPos = (float3)transform.position,
-                WorldRot = (quaternion)transform.rotation,
+                workerCount = Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount;
+            }
+            catch
+            {
+                workerCount = Mathf.Max(1, SystemInfo.processorCount - 1);
+            }
+            int targetBatches = workerCount * 2;
+            int innerloopBatchCount = Mathf.CeilToInt(vertCount / targetBatches);
+            innerloopBatchCount = ((innerloopBatchCount + 31) / 32) * 32; // multiple of 32 for better SIMD/cache
 
-                // Continent settings
-                ContinentWavelength = planetOptions.ContinentWavelength,
-                ContinentLacunarity = planetOptions.ContinentLacunarity,
-                ContinentPersistence = planetOptions.ContinentPersistence,
-                ContinentOctaves = planetOptions.ContinentOctaves,
-                WarpAmplitude = planetOptions.ContinentWarpAmplitude,
-                WarpFrequency = planetOptions.ContinentWarpFrequency,
+            JobHandle handle;
+            // Schedule the vertex job
+            if (_IsWater)
+            {
+                var flatJob = new BuildChunkFlatMeshJob
+                {
+                    Resolution = _Resolution,
+                    Size = _Size,
+                    PlanetRadius = _PlanetRadius,
+                    QuadTreeSphereNoRotCenter = _QuadTreeSphereNoRotCenter,
+                    QuadTreeBoundsCenter = _QuadTreeBoundsCenter,
+                    WorldPos = (float3)transform.position,
+                    WorldRot = (quaternion)transform.rotation,
+                    Vertices = _Verts,
+                    Normals = _Normals,
+                    UVs = _Uvs,
+                    Colors = _Colors,
+                };
+                handle = flatJob.Schedule(_Verts.Length, innerloopBatchCount);
+                return handle;
+            }
+            else
+            {
+                var job = new BuildChunkMeshJob
+                {
+                    Resolution = _Resolution,
+                    Size = _Size,
+                    PlanetRadius = _PlanetRadius,
+                    QuadTreeSphereNoRotCenter = _QuadTreeSphereNoRotCenter,
+                    QuadTreeBoundsCenter = _QuadTreeBoundsCenter,
+                    WorldPos = (float3)transform.position,
+                    WorldRot = (quaternion)transform.rotation,
 
-                // Land/Ocean basic settings
-                SeaLevel = planetOptions.SeaLevel,
-                SeaCoastLimit = planetOptions.SeaCoastLimit,
-                LandCoastLimit = planetOptions.LandCoastLimit,
+                    // Continent settings
+                    ContinentWavelength = planetOptions.ContinentWavelength,
+                    ContinentLacunarity = planetOptions.ContinentLacunarity,
+                    ContinentPersistence = planetOptions.ContinentPersistence,
+                    ContinentOctaves = planetOptions.ContinentOctaves,
+                    WarpAmplitude = planetOptions.ContinentWarpAmplitude,
+                    WarpFrequency = planetOptions.ContinentWarpFrequency,
 
-                BaseLandLevel = planetOptions.BaseLandLevel,
-                LandMaxHeight = planetOptions.LandMaxHeight,
+                    // Land/Ocean basic settings
+                    SeaLevel = planetOptions.SeaLevel,
+                    SeaCoastLimit = planetOptions.SeaCoastLimit,
+                    LandCoastLimit = planetOptions.LandCoastLimit,
 
-                ShelfDepth = planetOptions.ShelfDepth,
-                ShelfPortion = planetOptions.ShelfPortion,
-                ShelfSharpness = planetOptions.ShelfSharpness,
-                OceanMaxDepth = planetOptions.OceanMaxDepth,
-                OceanPlateauDepth = planetOptions.OceanPlateauDepth,
+                    BaseLandLevel = planetOptions.BaseLandLevel,
+                    LandMaxHeight = planetOptions.LandMaxHeight,
 
-                // Inland settings
-                LandHillRampLimit = planetOptions.LandHillRampLimit,
-                HillsWavelength = planetOptions.HillsWavelength,
-                HillsOctaves = planetOptions.HillsOctaves,
-                HillsPersistence = planetOptions.HillsPersistence,
-                HillsLacunarity = planetOptions.HillsLacunarity,
-                HillsAmplitudeMeters = planetOptions.HillsAmplitudeMeters,
+                    ShelfDepth = planetOptions.ShelfDepth,
+                    ShelfPortion = planetOptions.ShelfPortion,
+                    ShelfSharpness = planetOptions.ShelfSharpness,
+                    OceanMaxDepth = planetOptions.OceanMaxDepth,
+                    OceanPlateauDepth = planetOptions.OceanPlateauDepth,
 
-                MountainStart = planetOptions.MountainStart,
-                MountainRampLimit = planetOptions.MountainRampLimit,
-                MountainWavelength = planetOptions.MountainWavelength,
-                MountainOctaves = planetOptions.MountainOctaves,
-                MountainGain = planetOptions.MountainGain,
-                MountainLacunarity = planetOptions.MountainLacunarity,
-                MountainAmplitudeMeters = planetOptions.MountainAmplitudeMeters,
+                    // Inland settings
+                    LandHillRampLimit = planetOptions.LandHillRampLimit,
+                    HillsWavelength = planetOptions.HillsWavelength,
+                    HillsOctaves = planetOptions.HillsOctaves,
+                    HillsPersistence = planetOptions.HillsPersistence,
+                    HillsLacunarity = planetOptions.HillsLacunarity,
+                    HillsAmplitudeMeters = planetOptions.HillsAmplitudeMeters,
 
-                Vertices = _Verts,
-                Normals = _Normals,
-                UVs = _Uvs,
-                Colors = _Colors,
-            };
+                    MountainStart = planetOptions.MountainStart,
+                    MountainRampLimit = planetOptions.MountainRampLimit,
+                    MountainWavelength = planetOptions.MountainWavelength,
+                    MountainOctaves = planetOptions.MountainOctaves,
+                    MountainGain = planetOptions.MountainGain,
+                    MountainLacunarity = planetOptions.MountainLacunarity,
+                    MountainAmplitudeMeters = planetOptions.MountainAmplitudeMeters,
 
-            JobHandle handle = job.Schedule(_Verts.Length, 128);
+                    Vertices = _Verts,
+                    Normals = _Normals,
+                    UVs = _Uvs,
+                    Colors = _Colors,
+                };
+                handle = job.Schedule(_Verts.Length, innerloopBatchCount);
+            }
 
             // When job completes, copy into MeshData vertex buffers on main thread vis ApplyMesh
             // for now, it's called by ChunkManager after all jobs are completed
@@ -396,6 +436,46 @@ namespace PlanetGen
                 w.y = noise.snoise(pt * frequency + new float3(-12.3f, 44.5f, 7.9f));
                 w.z = noise.snoise(pt * frequency + new float3(9.4f, -55.6f, 23.3f));
                 return pt + amplitude * w;
+            }
+        }
+
+        [BurstCompile]
+        private struct BuildChunkFlatMeshJob : IJobParallelFor
+        {
+            public int Resolution;
+            public float PlanetRadius;
+            public double Size;
+            public double3 WorldPos;
+            public quaternion WorldRot;
+            public double3 QuadTreeSphereNoRotCenter;
+            public double3 QuadTreeBoundsCenter;
+
+            public NativeArray<float3> Vertices;
+            public NativeArray<float2> UVs;
+            public NativeArray<float3> Normals;
+            public NativeArray<float4> Colors;
+
+            public void Execute(int index)
+            {
+                int vertsPerSide = Resolution + 1;
+                int y = index / vertsPerSide;
+                int x = index % vertsPerSide;
+
+                double fx = (double)x / Resolution;
+                double fy = (double)y / Resolution;
+
+                double xPos = (fx - 0.5) * Size + QuadTreeBoundsCenter.x;
+                double zPos = (fy - 0.5) * Size + QuadTreeBoundsCenter.z;
+
+                double3 planetPoint = new double3(xPos, PlanetRadius, zPos);
+                float3 dir = math.normalize((float3)planetPoint);
+
+                float3 p = dir * PlanetRadius;
+
+                Vertices[index] = p - (float3)QuadTreeSphereNoRotCenter;
+                UVs[index] = new float2((float)fx, (float)fy);
+                Normals[index] = dir;
+                Colors[index] = new float4(1f, 1f, 1f, 1f);
             }
         }
     }
