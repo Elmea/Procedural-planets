@@ -6,7 +6,6 @@ using UnityEngine;
 
 namespace Assets.Scripts.PlanetGen
 {
-
     public struct QuadNode : IEquatable<QuadNode>
     {
         public int2 Coords;

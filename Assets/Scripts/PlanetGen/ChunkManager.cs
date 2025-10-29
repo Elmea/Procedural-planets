@@ -59,6 +59,8 @@ namespace PlanetGen
             if (_CullCamera == null)
                 _CullCamera = Camera.main;
 
+            _WaterChunkMaterial.SetVector("PlanetPosition", transform.position);
+
             // Face +X
             _FaceMatrices[(int)PlanetFace.PX] = float4x4.TRS(
                 new float3(_PlanetRadius, 0f, 0f),
