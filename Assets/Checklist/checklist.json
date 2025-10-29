@@ -6,17 +6,17 @@
             "subTasks": [
                 {
                     "text": "Noise plat",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {
                     "text": "LOD",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {
                     "text": "Planète",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {
@@ -67,8 +67,13 @@
                     "subTasks": []
                 },
                 {
+                    "text": "Raymarching autour des planètes",
+                    "isDone": true,
+                    "subTasks": []
+                },
+                {
                     "text": "Nuages de points à partir d'un Noise 3D",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 },
                 {
@@ -83,7 +88,7 @@
                 },
                 {
                     "text": "Couverture obj sphérique",
-                    "isDone": false,
+                    "isDone": true,
                     "subTasks": []
                 }
             ]
