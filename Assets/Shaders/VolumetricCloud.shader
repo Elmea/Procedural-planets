@@ -166,7 +166,7 @@ Shader "Custom/VolumetricCloud"
                         }
                     }
 
-                    depth += max(0.0065, 0.0055 * depth);
+                    depth += max(0.0055, 0.0035 * depth);
                     if (alpha > 0.998) break;
                 }
 
