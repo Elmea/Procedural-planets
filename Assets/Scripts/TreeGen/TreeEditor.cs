@@ -261,13 +261,12 @@ public class TreeEditor : EditorWindow
         
         GUILayout.Space(8);
         
-        SerializedObject so = new SerializedObject(this);
-        
         EditorGUILayout.LabelField("Branches Settings", EditorStyles.boldLabel);
         barkMat = (Material)EditorGUILayout.ObjectField("Bark Material", barkMat, typeof(Material), false);
         
         GUILayout.Space(4);
         
+        SerializedObject so = new SerializedObject(this);
         EditorGUILayout.PropertyField(so.FindProperty("branches"), true);
         EditorGUILayout.PropertyField(so.FindProperty("lengths"), true);
         EditorGUILayout.PropertyField(so.FindProperty("radius"), true);
@@ -430,7 +429,7 @@ public class TreeEditor : EditorWindow
     void LoadPreset()
     {
         string command = Event.current.commandName;
-        if (command != "ObjectSelectorClosed")
+        if (command != "ObjectSelectorClosed" || EditorGUIUtility.GetObjectPickerObject() is not ProceduralTreeParameters)
             return;
         
         loadedParameters = EditorGUIUtility.GetObjectPickerObject() as ProceduralTreeParameters;
