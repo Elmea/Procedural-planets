@@ -442,16 +442,16 @@ public class TreeEditor : EditorWindow
         level = loadedParameters.TreeLevels;
         
         barkMat = loadedParameters.BarkMat;
-        branches = loadedParameters.ChildBranchesCounts;
-        lengths = loadedParameters.BranchLength;
-        radius = loadedParameters.BranchRadius;
-        thinning = loadedParameters.Thinning;
-        childBranchEmergencePos = loadedParameters.ChildBranchEmergencePos;
-        angle = loadedParameters.Angle;
-        gnarliness = loadedParameters.Gnarliness;
+        branches = new(loadedParameters.ChildBranchesCounts);
+        lengths = new(loadedParameters.BranchLength);
+        radius = new(loadedParameters.BranchRadius);
+        thinning = new(loadedParameters.Thinning);
+        childBranchEmergencePos = new(loadedParameters.ChildBranchEmergencePos);
+        angle = new(loadedParameters.Angle);
+        gnarliness = new(loadedParameters.Gnarliness);
         growth = loadedParameters.TreeGrowth;
-        sectionCount = loadedParameters.BranchSectionCount;
-        meshSegmentCount = loadedParameters.MeshSegmentCount;
+        sectionCount = new(loadedParameters.BranchSectionCount);
+        meshSegmentCount = new(loadedParameters.MeshSegmentCount);
     
         leavesMat = loadedParameters.LeavesMat;
         generateLeaves = loadedParameters.GenerateLeaves;
@@ -470,16 +470,16 @@ public class TreeEditor : EditorWindow
         saveInto.TreeLevels = level;
         
         saveInto.BarkMat = barkMat;
-        saveInto.ChildBranchesCounts = branches;
-        saveInto.BranchLength = lengths;
-        saveInto.BranchRadius = radius;
-        saveInto.BranchSectionCount = sectionCount;
-        saveInto.MeshSegmentCount = meshSegmentCount;
-        saveInto.Gnarliness = gnarliness;
+        saveInto.ChildBranchesCounts = new(branches);
+        saveInto.BranchLength = new(lengths);
+        saveInto.BranchRadius = new(radius);
+        saveInto.BranchSectionCount = new(sectionCount);
+        saveInto.MeshSegmentCount = new(meshSegmentCount);
+        saveInto.Gnarliness = new(gnarliness);
         saveInto.TreeGrowth = growth;
-        saveInto.Angle = angle;
-        saveInto.Thinning = thinning;
-        saveInto.ChildBranchEmergencePos = childBranchEmergencePos;
+        saveInto.Angle = new(angle);
+        saveInto.Thinning = new(thinning);
+        saveInto.ChildBranchEmergencePos = new(childBranchEmergencePos);
         
         saveInto.LeavesMat = leavesMat;
         saveInto.GenerateLeaves = generateLeaves;
