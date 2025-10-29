@@ -74,7 +74,7 @@ public class Branch
     {
         Vector3 sectionOrientation = constructionData.orientation;
         Vector3 sectionOrigin = constructionData.origin;
-        float sectionLength = constructionData.length / constructionData.sectionCount / 1; // (levels - 1); the fuck is this ezTree ?
+        float sectionLength = constructionData.length / constructionData.sectionCount;
         
         //Generate branch sections
         List<Section> sections = new();
@@ -197,8 +197,7 @@ public class Branch
             Section b = sectionIndex == sections.Count - 1 ? a : sections[sectionIndex + 1];
 
             // Find normalized distance from section A to section B (0 to 1)
-            //float alpha = (childBranchEmergence - sectionIndex / (float)(sections.Count - 1)) * (sections.Count - 1);
-            float alpha = branchEmergenceAlpha * (sections.Count - 1) - sectionIndex; //This gives more or less same result as above
+            float alpha = branchEmergenceAlpha * (sections.Count - 1) - sectionIndex;
             
             Vector3 branchEmergence = Vector3.Lerp(a.origin, b.origin, alpha);
             float radius = parameters.radius[branchLevel] * Mathf.Lerp(a.radius, b.radius, alpha);

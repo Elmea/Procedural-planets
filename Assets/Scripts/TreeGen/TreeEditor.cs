@@ -81,6 +81,7 @@ public class TreeEditor : EditorWindow
         Rect rightRect = new Rect(splitterPos + splitterWidth, 0, rightWidth, position.height);
         
         GUILayout.BeginArea(leftRect);
+        
         // --- Preview Rect ---
         Rect previewRect = GUILayoutUtility.GetRect(256, 256, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
@@ -195,13 +196,13 @@ public class TreeEditor : EditorWindow
             case EventType.MouseDrag:
                 if (GUIUtility.hotControl == controlID)
                 {
-                    if (e.button == 0) // Left drag = orbit
+                    if (e.button == 0)
                     {
                         orbitAngles.x += e.delta.x;
                         orbitAngles.y -= e.delta.y;
                         orbitAngles.y = Mathf.Clamp(orbitAngles.y, -85f, 85f);
                     }
-                    else if (e.button == 2) // Middle drag = pan
+                    else if (e.button == 2)
                     {
                         float panSpeed = 0.002f * distance;
                         Vector3 right = Quaternion.Euler(0, orbitAngles.x, 0) * Vector3.right;
@@ -403,7 +404,6 @@ public class TreeEditor : EditorWindow
         mesh.RecalculateNormals();
     }
     
-    // --- Save Mesh Function ---
     void SaveMeshAsset()
     {
         string path = EditorUtility.SaveFilePanelInProject(
