@@ -65,6 +65,8 @@ class DVolumetricCloudManagerEditor : Editor
 {
     public override void OnInspectorGUI()
     {
+        base.OnInspectorGUI();
+
         VolumetricCloudManager manager = (VolumetricCloudManager)target;
 
         if (GUILayout.Button("Generate"))
