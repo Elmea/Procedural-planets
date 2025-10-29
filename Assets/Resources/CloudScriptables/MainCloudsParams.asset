@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MainCloudsParams
   m_EditorClassIdentifier: 
   planetRadius: 16000
-  minHeight: 20
-  maxHeight: 100
-  size: 300
-  speed: 0.1
+  minHeight: 150
+  maxHeight: 300
+  size: 1200
+  speed: 10
