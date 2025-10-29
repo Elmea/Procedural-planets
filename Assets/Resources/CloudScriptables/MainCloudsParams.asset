@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   planetRadius: 16000
   minHeight: 150
-  maxHeight: 300
+  maxHeight: 400
   size: 1200
-  speed: 10
+  speed: 20

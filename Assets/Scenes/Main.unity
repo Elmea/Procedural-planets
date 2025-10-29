@@ -489,7 +489,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 591130365}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2915b79479a3fb64180a7b96ac0fa9b0, type: 3}
   m_Name: 
@@ -579,11 +579,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3f30f89a38895e458503fb0efe823e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _MoveSpeed: 100
+  _MoveSpeed: 75
   _FastMultiplier: 10
   _Acceleration: 20
   _Damping: 10
-  _LookSensitivity: 1
+  _LookSensitivity: 0.25
   _MaxLookX: 90
   _MinLookX: -90
 --- !u!114 &1113689239

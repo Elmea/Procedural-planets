@@ -1,4 +1,3 @@
-using PlasticPipe.PlasticProtocol.Messages;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "PlanetEnvOptions", menuName = "Scriptable Objects/PlanetOptions")]

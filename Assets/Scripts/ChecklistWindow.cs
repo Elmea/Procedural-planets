@@ -3,6 +3,7 @@ using UnityEditor;
 using System.Collections.Generic;
 using System.IO;
 
+#if UNITY_EDITOR
 public class ChecklistWindow : EditorWindow
 {
     private static string checklistPath = "Assets/Checklist/checklist.json";
@@ -156,3 +157,4 @@ public class ChecklistItem
         this.subTasks = new List<ChecklistItem>();
     }
 }
+#endif

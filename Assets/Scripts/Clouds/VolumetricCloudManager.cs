@@ -60,6 +60,7 @@ public class VolumetricCloudManager : MonoBehaviour
     }
 }
 
+#if UNITY_EDITOR
 [CustomEditor(typeof(VolumetricCloudManager))]
 class DVolumetricCloudManagerEditor : Editor
 {
@@ -73,3 +74,4 @@ class DVolumetricCloudManagerEditor : Editor
             manager.GatherRenderers();
     }
 }
+#endif
