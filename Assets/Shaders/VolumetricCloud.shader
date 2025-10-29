@@ -137,21 +137,21 @@ Shader "Custom/VolumetricCloud"
                 float alpha = 0.0;
 
                 float t0, t1;
-
+                
                 if (!intersectSphere(ro, rd, planet.center, planet.radius + planet.minMaxHeight.y, t0, t1))
                     return 0;
 
                 t0 = max(t0, 0.0);
-                float depth = t0;
+                float depth = 100;
             
-                for (int i = 0; i < 120; i++)
+                for (int i = 0; i < 1500; i++)
                 {
                     float3 p = ro + depth * rd;
                     
                     if (!DepthTest(p))
-                        break;   
+                        break;
 
-                    float heightAboveSurface = length(p - planet.center) - planet.radius;
+                    float heightAboveSurface = abs(length(p - planet.center) - planet.radius);
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
                     {
@@ -166,7 +166,7 @@ Shader "Custom/VolumetricCloud"
                         }
                     }
 
-                    depth += max(0.035, 0.025 * depth);
+                    depth += max(0.0065, 0.0055 * depth);
                     if (alpha > 0.998) break;
                 }
 
