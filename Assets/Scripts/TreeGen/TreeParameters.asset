@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b232fcc5582e9548a0b014a9c2c15af, type: 3}
+  m_Name: TreeParameters
+  m_EditorClassIdentifier: 
+  <Seed>k__BackingField: 0
+  <TreeLevels>k__BackingField: 3
+  <BarkMat>k__BackingField: {fileID: 2100000, guid: 35f01674af6b5c54d8e8dcd90694eb63, type: 2}
+  <ChildBranchesCounts>k__BackingField: 070000000400000003000000
+  <BranchLength>k__BackingField:
+  - 40
+  - 27
+  - 9.5
+  - 4.6
+  <BranchRadius>k__BackingField:
+  - 2
+  - 0.6
+  - 0.76
+  - 0.7
+  <BranchSectionCount>k__BackingField: 0c000000080000000600000004000000
+  <MeshSegmentCount>k__BackingField: 0c000000060000000400000003000000
+  <Gnarliness>k__BackingField:
+  - 2
+  - 14
+  - 11
+  - 5
+  <TreeGrowth>k__BackingField:
+    direction: {x: 0, y: 1, z: 0}
+    strength: 0.01
+  <Angle>k__BackingField:
+  - 48
+  - 75
+  - 60
+  <Thinning>k__BackingField:
+  - 0.7
+  - 0.7
+  - 0.7
+  - 0.7
+  <ChildBranchEmergencePos>k__BackingField:
+  - {x: 0.1, y: 1}
+  - {x: 0.1, y: 1}
+  - {x: 0.1, y: 1}
+  - {x: 0.1, y: 1}
+  <LeavesMat>k__BackingField: {fileID: 2100000, guid: 3d0c97be1b4090448ae6a354e2662b84, type: 2}
+  <GenerateLeaves>k__BackingField: 1
+  <LeavesCount>k__BackingField: 16
+  <LeavesEmergenceStartEnd>k__BackingField: {x: 0.1, y: 1}
+  <LeavesAngle>k__BackingField: 90
+  <LeafSize>k__BackingField: 3
+  <LeafSizeVariance>k__BackingField: 0.7
