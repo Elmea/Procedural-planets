@@ -317,7 +317,7 @@ namespace PlanetGen
                     else
                     {
                         if (continentWithCoastline > 0.7f)
-                            Colors[index] = new float4(new float3(1f), 1.0f);
+                            Colors[index] = new float4(new float3(0.275f, 0.247f, 0.18f), 1.0f);
                         else
                             Colors[index] = new float4(new float3(0.408f, 0.741f, 0.337f), 1.0f);
                     }
