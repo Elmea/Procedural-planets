@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca8f17d13332fa246b52b5c34df7230c, type: 3}
+  m_Name: PlanetTestOptions
+  m_EditorClassIdentifier: 
+  ContinentWavelength: 2.5
+  ContinentLacunarity: 2
+  ContinentPersistence: 0.5
+  ContinentOctaves: 5
+  ContinentWarpAmplitude: 0.35
+  ContinentWarpFrequency: 1.7
+  SeaLevel: 0.5
+  SeaCoastLimit: 0.46
+  LandCoastLimit: 0.54
+  BaseLandLevel: 10
+  LandMaxHeight: 100
+  ShelfDepth: 10
+  ShelfPortion: 0.3
+  ShelfSharpness: 3
+  OceanPlateauDepth: 100
+  OceanMaxDepth: 175
+  LandHillRampLimit: 0.63
+  HillsWavelength: 0.1
+  HillsOctaves: 5
+  HillsPersistence: 0.5
+  HillsLacunarity: 2
+  HillsWarpAmplitude: 0.2
+  HillsWarpFrequency: 1.7
+  HillsAmplitudeMeters: 75
+  MountainThreshold: 0.35
+  MountainRamp: 0.1
+  MountainWavelength: 0.06
+  MountainOctaves: 5
+  MountainGain: 0.5
+  MountainLacunarity: 2
+  MountainWarpAmplitude: 0.15
+  MountainWarpFrequency: 2.3
+  MountainAmplitudeMeters: 180
