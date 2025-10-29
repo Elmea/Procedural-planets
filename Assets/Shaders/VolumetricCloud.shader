@@ -151,7 +151,7 @@ Shader "Custom/VolumetricCloud"
                     if (!DepthTest(p))
                         break;
 
-                    float heightAboveSurface = abs(length(p - planet.center) - planet.radius);
+                    float heightAboveSurface = length(p - planet.center) - planet.radius;
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
                     {
