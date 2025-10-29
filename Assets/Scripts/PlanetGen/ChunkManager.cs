@@ -29,13 +29,17 @@ namespace PlanetGen
         [SerializeField] private bool _EnableDebugQuad = false;
 
         [Header("")]
-        [SerializeField] private Material _ChunkMaterial;
+        [SerializeField] private Material _TerrainChunkMaterial;
+        [SerializeField] private Material _WaterChunkMaterial;
         [SerializeField] private Camera _CullCamera;
         [SerializeField] private PlanetOptionsSO _OptionsSO;
         [SerializeField] private bool _Enabled = true;
+        [SerializeField] private bool _EnableWater = true;
 
-        private Dictionary<QuadNode, Chunk> _Chunks = new();
-        private Stack<Chunk> _Pool = new(); // used as a stack for recycling chunks
+        private Dictionary<QuadNode, Chunk> _TerrainChunks = new();
+        private Dictionary<QuadNode, Chunk> _WaterChunks = new();
+        private Stack<Chunk> _TerrainPool = new(); // used as a stack for recycling chunks
+        private Stack<Chunk> _WaterPool = new();
 
         // we will use the job system of unity to generate the chunks in parallel
         private List<JobHandle> _Handles = new();
@@ -45,7 +49,6 @@ namespace PlanetGen
         private TerrainQuadTree[] _FaceQuadTrees = new TerrainQuadTree[6];
         private HashSet<QuadNode> _ActiveChunks = new();
         readonly List<QuadNode> _ToActivate = new();
-        readonly List<QuadNode> _ToDeactivate = new();
         private float4x4[] _FaceMatrices = new float4x4[6];
 
         // For culling
@@ -55,6 +58,8 @@ namespace PlanetGen
         {
             if (_CullCamera == null)
                 _CullCamera = Camera.main;
+
+            _WaterChunkMaterial.SetVector("PlanetPosition", transform.position);
 
             // Face +X
             _FaceMatrices[(int)PlanetFace.PX] = float4x4.TRS(
@@ -118,6 +123,84 @@ namespace PlanetGen
             if (_CullCamera == null || _Enabled == false)
                 return;
 
+            GeometryUtility.CalculateFrustumPlanes(_CullCamera, _FrustumPlanes);
+            int budget = _BudgetPerFrame;
+            _DesiredLeaves.Clear();
+            for (int f = 0; f < 6; ++f)
+            {
+                _FaceQuadTrees[f].CollectLeavesDistance(_CullCamera.transform.position,
+                    _FrustumPlanes, _ActiveChunks, _DesiredLeaves, ref budget);
+            }
+
+            var desiredSet = new HashSet<QuadNode>(_DesiredLeaves);
+
+            List<QuadNode> toDeactivate = new();
+            foreach (var active in _ActiveChunks)
+                if (!desiredSet.Contains(active))
+                    toDeactivate.Add(active);
+
+            foreach (var n in toDeactivate)
+            {
+                if (_TerrainChunks.TryGetValue(n, out var chunk))
+                {
+                    RecycleChunk(chunk, false);
+                    _TerrainChunks.Remove(n);
+                }
+                if (_EnableWater && _WaterChunks.TryGetValue(n, out var waterChunk))
+                {
+                    RecycleChunk(waterChunk, true);
+                    _WaterChunks.Remove(n);
+                }
+                _ActiveChunks.Remove(n);
+            }
+
+            foreach (var key in _DesiredLeaves)
+            {
+                if (_ActiveChunks.Contains(key))
+                    continue;
+                var qt = _FaceQuadTrees[(int)key.Face];
+
+                var b = qt.GetWorldNodeBounds(key);
+                var qtb = qt.GetNodeBounds(key); // without rotation, for positioning 
+
+                var chunk = GetChunk(false);
+                chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}_F{key.Face}";
+                chunk.transform.SetParent(transform, false);
+                chunk.transform.localPosition = new Vector3((float)b.Center.x, (float)b.Center.y, (float)b.Center.z);
+                chunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
+
+                double3 qtNoRotCenter = qtb.Center;
+                qtNoRotCenter.y = _PlanetRadius;
+                qtNoRotCenter = math.normalize(qtNoRotCenter) * _PlanetRadius;
+                chunk.Initialize(_Resolution, b.Size, _TerrainChunkMaterial, false, _PlanetRadius, qtb.Center, qtNoRotCenter);
+
+                var tris = SharedTrianglesCache.Get(_Resolution);
+                var h = chunk.ScheduleBuild(tris, _OptionsSO);
+                _Handles.Add(h);
+
+                _TerrainChunks[key] = chunk;
+                _ToBuild.Add(chunk);
+
+                if (_EnableWater)
+                {
+                    var waterChunk = GetChunk(true);
+                    waterChunk.gameObject.name = $"WaterChunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}_F{key.Face}";
+                    waterChunk.transform.SetParent(transform, false);
+                    waterChunk.transform.localPosition = new Vector3((float)b.Center.x, (float)b.Center.y, (float)b.Center.z);
+                    waterChunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
+                    waterChunk.Initialize(_Resolution, b.Size, _WaterChunkMaterial, true, _PlanetRadius, qtb.Center, qtNoRotCenter);
+                    var waterH = waterChunk.ScheduleBuild(tris, _OptionsSO);
+                    _Handles.Add(waterH);
+                    _WaterChunks[key] = waterChunk;
+                    _ToBuild.Add(waterChunk);
+                }
+
+                _ActiveChunks.Add(key);
+            }
+        }
+
+        private void LateUpdate()
+        {
             for (int i = 0; i < _Handles.Count; i++)
                 _Handles[i].Complete();
             _Handles.Clear();
@@ -130,88 +213,32 @@ namespace PlanetGen
             }
             _ToBuild.Clear();
             _Handles.Clear();
-
-            GeometryUtility.CalculateFrustumPlanes(_CullCamera, _FrustumPlanes);
-            int budget = _BudgetPerFrame;
-            _DesiredLeaves.Clear();
-            for (int f = 0; f < 6; ++f)
-            {
-                _FaceQuadTrees[f].CollectLeavesDistance(_CullCamera.transform.position,
-                    _FrustumPlanes, _ActiveChunks, _DesiredLeaves, ref budget);
-            }
-
-            var desiredSet = new HashSet<QuadNode>(_DesiredLeaves);
-
-            _ToDeactivate.Clear();
-            foreach (var active in _ActiveChunks)
-                if (!desiredSet.Contains(active))
-                    _ToDeactivate.Add(active);
-
-            foreach (var n in _ToDeactivate)
-            {
-                if (_Chunks.TryGetValue(n, out var chunk))
-                {
-                    RecycleChunk(chunk);
-                    _Chunks.Remove(n);
-                }
-                _ActiveChunks.Remove(n);
-            }
-
-            _ToActivate.Clear();
-            foreach (var want in _DesiredLeaves)
-                if (!_ActiveChunks.Contains(want))
-                    _ToActivate.Add(want);
-
-            foreach (var key in _ToActivate)
-            {
-                var qt = _FaceQuadTrees[(int)key.Face];
-
-                var b = qt.GetWorldNodeBounds(key);
-                var qtb = qt.GetNodeBounds(key); // without rotation, for positioning 
-
-                var chunk = GetChunk();
-                chunk.gameObject.name = $"Chunk_{key.Coords.x}_{key.Coords.y}_D{key.Depth}_F{key.Face}";
-                chunk.transform.SetParent(transform, false);
-                chunk.transform.localPosition = new Vector3((float)b.Center.x, (float)b.Center.y, (float)b.Center.z);
-                chunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
-
-                double3 qtNoRotCenter = qtb.Center;
-                qtNoRotCenter.y = _PlanetRadius;
-                qtNoRotCenter = math.normalize(qtNoRotCenter) * _PlanetRadius;
-                chunk.Initialize(_Resolution, b.Size, _ChunkMaterial, _PlanetRadius, qtb.Center, qtNoRotCenter);
-
-                var tris = SharedTrianglesCache.Get(_Resolution);
-                var h = chunk.ScheduleBuild(tris, _OptionsSO);
-                _Handles.Add(h);
-
-                _Chunks[key] = chunk;
-                _ActiveChunks.Add(key);
-                _ToBuild.Add(chunk);
-            }
         }
 
         private void OnDisable()
         {
-            foreach (var kv in _Chunks) kv.Value.Dispose();
-            _Chunks.Clear();
+            foreach (var kv in _TerrainChunks) kv.Value.Dispose();
+            _TerrainChunks.Clear();
             SharedTrianglesCache.DisposeAll();
         }
 
-        private void RecycleChunk(Chunk chunk)
+        private void RecycleChunk(Chunk chunk, bool isWater)
         {
             if (!chunk) return;
             chunk.gameObject.SetActive(false);
-            _Pool.Push(chunk);
+            if (isWater == false)
+                _TerrainPool.Push(chunk);
         }
 
-        private Chunk GetChunk()
+        private Chunk GetChunk(bool isWater)
         {
-            while (_Pool.Count > 0 && _Pool.Peek() == null)
-                _Pool.Pop(); // normally shouldn't happen but just in case...
+            var pool = isWater ? _WaterPool : _TerrainPool;
+            while (pool.Count > 0 && pool.Peek() == null)
+                pool.Pop(); // normally shouldn't happen but just in case...
 
-            if (_Pool.Count > 0)
+            if (pool.Count > 0)
             {
-                var c = _Pool.Pop();
+                var c = pool.Pop();
                 c.gameObject.SetActive(true);
                 return c;
             }
