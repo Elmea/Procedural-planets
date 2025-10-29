@@ -123,6 +123,7 @@ Shader "Custom/VolumetricCloud"
             {
                 float4 clipPos = UnityObjectToClipPos(pos);
                 float zDepth = clipPos.z / clipPos.w;
+                
                 #ifndef UNITY_REVERSED_Z // OpenGL
                 zDepth = zDepth * 0.5 + 0.5;
                 #endif
@@ -148,7 +149,7 @@ Shader "Custom/VolumetricCloud"
                     float3 p = ro + depth * rd;
                     
                     if (!DepthTest(p))
-                        break;
+                        break;   
 
                     float heightAboveSurface = length(p - planet.center) - planet.radius;
 
