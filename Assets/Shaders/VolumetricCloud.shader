@@ -155,7 +155,12 @@ Shader "Custom/VolumetricCloud"
 
                     if (heightAboveSurface > planet.minMaxHeight.x && heightAboveSurface < planet.minMaxHeight.y)
                     {
-                        float density = fbm((p + planet.speed * _Time) / planet.cloudSize);   
+                        float layerHeight = planet.minMaxHeight.y - planet.minMaxHeight.x;
+                        float heightRatio = saturate((heightAboveSurface - planet.minMaxHeight.x) / layerHeight);
+
+                        float heightFalloff = smoothstep(0.05, 0.5, heightRatio) * (1.0 - smoothstep(0.5, 0.95, heightRatio));
+                        
+                        float density = fbm((p + planet.speed * _Time) / planet.cloudSize) * heightFalloff;   
 
                         if (density > 0.001)
                         {

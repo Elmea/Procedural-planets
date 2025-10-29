@@ -178,7 +178,7 @@ public class TreeEditor : EditorWindow
         switch (e.type)
         {
             case EventType.MouseDown:
-                if (e.button == 0 || e.button == 2)
+                if (e.button == 0 || e.button == 1)
                 {
                     GUIUtility.hotControl = controlID;
                     e.Use();
@@ -202,7 +202,7 @@ public class TreeEditor : EditorWindow
                         orbitAngles.y -= e.delta.y;
                         orbitAngles.y = Mathf.Clamp(orbitAngles.y, -85f, 85f);
                     }
-                    else if (e.button == 2)
+                    else if (e.button == 1)
                     {
                         float panSpeed = 0.002f * distance;
                         Vector3 right = Quaternion.Euler(0, orbitAngles.x, 0) * Vector3.right;
