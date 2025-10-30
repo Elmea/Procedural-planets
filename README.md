@@ -4,20 +4,18 @@
 
 # Tree Generation
 
-This part explains how to use the editor tool to create or edit a tree.
-
+This part explains how to use the editor tool to create or edit a tree.<br/>
 ![](ReadMeAssets/TreeEditor.png)<br/>
 
 
 ## Open Tree Editor
 
-Opening the tree editor is fairly simple : go to Window, and the TreeEditor.
-
+Opening the tree editor is fairly simple : go to Window, and the TreeEditor.<br/>
 ![](ReadMeAssets/TreeEditorAccess.png)<br/>
 
 ## Presets
 
-One of the possibilities the tool gives you, is to save and load tree presets in the form of a ScriptableObject.
+One of the possibilities the tool gives you, is to save and load tree presets in the form of a ScriptableObject.<br/>
 ![](ReadMeAssets/ScriptableObject.png)<br/>
 
 With the button "LoadPreset", you can choose a preset to use.
@@ -31,12 +29,12 @@ And lastly, with the button "Create Preset", you can, well, create a preset with
 ## Parameters
 
 A lot of parameters are involved in the creation of the tree.
-I will let you discover. But once you have finished tweaking the parameters, don't forget to press the "Generate Tree" button.
+I will let you discover. But once you have finished tweaking the parameters, don't forget to press the "Generate Tree" button.<br/>
 ![](ReadMeAssets/Parameters.png)<br/> 
 
 ## Mesh
 
-Once you are satisfied with your settings, you can save the mesh with the button "Save Mesh".
+Once you are satisfied with your settings, you can save the mesh with the button "Save Mesh".<br/>
 ![](ReadMeAssets/SavedMesh.png)<br/>
 
 ### Tech used
