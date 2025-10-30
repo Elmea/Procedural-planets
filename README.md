@@ -43,8 +43,7 @@ Once you are satisfied with your settings, you can save the mesh with the button
 
 
 ## Credit
-
-Author:</br> 
-Gauthier Bienvenu [@breizhBienv](https://www.github.com/breizhBienv)<br/>
 From 03/10/2025 to 30/10/2025 <br/>
-Done at **Isart Digital**.
+Done at **Isart Digital**. <br/>
+Authors:<br/> 
+Gauthier Bienvenu [@breizhBienv](https://www.github.com/breizhBienv) <br/>
