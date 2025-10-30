@@ -32,13 +32,12 @@ And lastly, with the button "Create Preset", you can, well, create a preset with
 
 A lot of parameters are involved in the creation of the tree.
 I will let you discover. But once you have finished tweaking the parameters, don't forget to press the "Generate Tree" button.
-![](ReadMeAssets/Parameters.gif)<br/> 
-
+![](ReadMeAssets/Parameters.png)<br/> 
 
 ## Mesh
 
 Once you are satisfied with your settings, you can save the mesh with the button "Save Mesh".
-
+![](ReadMeAssets/SavedMesh.png)<br/>
 
 ### Tech used
 
