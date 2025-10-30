@@ -38,13 +38,13 @@ Once you are satisfied with your settings, you can save the mesh with the button
 
 ## Tech used
 
-**Engine:** Unity 6000.0.58f2 </br>
+**Engine:** Unity 6000.0.58f2 <br/>
 **IDE:** Rider, Visual studio
 
 
 ## Credit
 
 Author:</br> 
-Gauthier Bienvenu [@breizhBienv](https://www.github.com/breizhBienv)</br>
-From 03/10/2025 to 30/10/2025 </br>
+Gauthier Bienvenu [@breizhBienv](https://www.github.com/breizhBienv)<br/>
+From 03/10/2025 to 30/10/2025 <br/>
 Done at **Isart Digital**.
