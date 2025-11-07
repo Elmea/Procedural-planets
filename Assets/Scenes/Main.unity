@@ -495,6 +495,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cloudMat: {fileID: 2100000, guid: c629fcc4ee7a1df4b94998bc0ffbb2f7, type: 2}
+  Sun: {fileID: 1924555860}
 --- !u!1 &1113689236
 GameObject:
   m_ObjectHideFlags: 0
@@ -1296,8 +1297,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1924555858}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
-  m_LocalPosition: {x: 0, y: 3, z: 0}
+  m_LocalRotation: {x: 0.017078979, y: 0.7072497, z: 0.017095774, w: -0.70655084}
+  m_LocalPosition: {x: -62.44666, y: 6.4010625, z: 129.94894}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

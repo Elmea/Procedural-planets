@@ -3,8 +3,8 @@ Shader "Custom/VolumetricCloud"
     Properties
     {
         _BlitTexture("Main Texture", 2D) = "white" {}   
-
         _CloudColor("Cloud Color", Color) = (1,1,1,1)
+        _SunDirection("Sun Direction", Vector) = (1,0,0)
     }
     SubShader
     {
@@ -42,12 +42,19 @@ Shader "Custom/VolumetricCloud"
                 float speed;
             };
 
+            float3 _SunDirection;
             sampler2D _BlitTexture;
             sampler2D _CameraDepthTexture;
-
+            
             fixed4 _CloudColor;
                 
             #define NUM_OCTAVES 10
+            #define MAX_RAYMARCH_STEPS 200
+            #define MAX_STEP_SIZE 300
+            #define MIN_STEP_SIZE 0.1 
+            #define MAX_STEPS_LIGHTS 5
+            #define ABSORPTION_COEFFICIENT 0.8
+            #define MAX_DIST 5000
 
             StructuredBuffer<float> planetDataBuffer; 
 
@@ -131,6 +138,32 @@ Shader "Custom/VolumetricCloud"
                 return zDepth > uvDepth;
             }
 
+            float CalcSample(float3 pos, planetData planet)
+            {
+                return fbm((pos + planet.speed * _Time) / planet.cloudSize);
+            }
+
+            float BeersLaw (float dist, float absorption) 
+            {
+              return exp(-dist * absorption);
+            }
+
+            float lightMarch(float3 position, float3 rayDir, planetData planet)
+            {
+                float totalDensity = 0.0;
+                float marchSize = 0.02;
+
+                for (int i = 0; i < MAX_STEPS_LIGHTS; i++)
+                {
+                    position += _SunDirection * marchSize * float(i);
+
+                    totalDensity += CalcSample(position, planet);
+                }
+
+                float transmittance = BeersLaw(totalDensity, ABSORPTION_COEFFICIENT);
+                return transmittance;
+            }
+
             fixed4 volumetricMarch(float3 ro, float3 rd, planetData planet)
             {
                 float3 color = float3(0.0, 0.0, 0.0);
@@ -143,8 +176,11 @@ Shader "Custom/VolumetricCloud"
 
                 t0 = max(t0, 0.0);
                 float depth = 100;
+
+                float totalTransmittance = 1.0;
+                float lightEnergy = 0.0;
             
-                for (int i = 0; i < 1500; i++)
+                for (int i = 0; i < MAX_RAYMARCH_STEPS; i++)
                 {
                     float3 p = ro + depth * rd;
                     
@@ -160,10 +196,16 @@ Shader "Custom/VolumetricCloud"
 
                         float heightFalloff = smoothstep(0.05, 0.5, heightRatio) * (1.0 - smoothstep(0.5, 0.95, heightRatio));
                         
-                        float density = fbm((p + planet.speed * _Time) / planet.cloudSize) * heightFalloff;   
+                        float density = CalcSample(p, planet) * heightFalloff;   
 
                         if (density > 0.001)
                         {
+                            /*
+                            float lightTransmittance = lightMarch(p, rd, planet);
+                            float luminance = density;
+                            totalTransmittance *= lightTransmittance;
+                            lightEnergy += totalTransmittance;*/
+
                             float3 c = lerp(_CloudColor.rgb, 0, density);
                             float a = density * 0.4 * (1.0 - alpha);
                             color += c * a;
@@ -171,11 +213,13 @@ Shader "Custom/VolumetricCloud"
                         }
                     }
 
-                    depth += max(0.0055, 0.0035 * depth);
+                    float distToOrigin = length(ro - p) ;
+                    depth += lerp(MIN_STEP_SIZE, MAX_STEP_SIZE, distToOrigin / length(ro - planet.center));
                     if (alpha > 0.998) break;
+                    // if (distToOrigin > MAX_DIST) break;
                 }
 
-                return fixed4(saturate(color), saturate(alpha));
+                return fixed4(saturate(color + lightEnergy), saturate(alpha));
             }
 
             v2f vert (uint id : SV_VertexID)

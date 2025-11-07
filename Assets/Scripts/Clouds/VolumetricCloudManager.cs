@@ -1,11 +1,12 @@
 using UnityEditor;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
+using UnityEngine.Experimental.GlobalIllumination;
 
 [ExecuteAlways]
 public class VolumetricCloudManager : MonoBehaviour
 {
     public Material cloudMat;
+    [SerializeField] Light Sun;
     private CloudRenderer[] cloudRenderers;
     ComputeBuffer buffer;
 
@@ -45,7 +46,10 @@ public class VolumetricCloudManager : MonoBehaviour
             rawData[i * 8 + 7] = cloudRenderers[i].CloudParameters.speed;
         }
 
+
         buffer.SetData(rawData);
+
+        cloudMat.SetVector("Sun Direction", Sun.transform.rotation * Vector3.forward);
         cloudMat.SetBuffer("planetDataBuffer", buffer);
     }
 
