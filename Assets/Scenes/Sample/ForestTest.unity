@@ -148,8 +148,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b44dea0a1287034296098b1b49013a8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _Material: {fileID: 2100000, guid: 68ee8f34eda235f44b7f7143c5e7807f, type: 2}
-  _Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  _BarkMaterial: {fileID: 2100000, guid: 68ee8f34eda235f44b7f7143c5e7807f, type: 2}
+  _LeavesMaterial: {fileID: 2100000, guid: adee49fe74d3c344189ac6ead689a668, type: 2}
+  _Mesh: {fileID: 4300000, guid: 4e34e0b91d1d747428bd7b8af8b5412f, type: 2}
   _NumberOfInstances: 10
 --- !u!4 &865947801
 Transform:

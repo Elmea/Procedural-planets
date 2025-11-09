@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: BarkInstanced
+  m_Name: LeavesInstanced
   m_Shader: {fileID: 4800000, guid: 4d66573e9cff993438121f46fad74a64, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -42,7 +42,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
-        m_Texture: {fileID: 2800000, guid: b53006b8aa471f142a22b519deb397cb, type: 3}
+        m_Texture: {fileID: 2800000, guid: 6341195625e4a3d44b4f07c034ff98f4, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
@@ -62,11 +62,11 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 971a28cca81842946a44859bde10a8ea, type: 3}
+        m_Texture: {fileID: 2800000, guid: ad000a4fb3883944e82d2173f444436e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskTex:
-        m_Texture: {fileID: 2800000, guid: 9f5a686f23daed64089818bf0d30f1b3, type: 3}
+        m_Texture: {fileID: 2800000, guid: 0ed8c7463a5b2e2459e6e33346197db9, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
