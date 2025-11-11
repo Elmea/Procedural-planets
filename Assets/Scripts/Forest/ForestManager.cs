@@ -1,5 +1,6 @@
-using UnityEngine;
 using Unity.Mathematics;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 // from the example found in the doc for Graphics.RenderMeshIndirect:
 // https://docs.unity3d.com/6000.2/Documentation/ScriptReference/Graphics.RenderMeshIndirect.html
@@ -8,7 +9,9 @@ public class ForestManager : MonoBehaviour
     [SerializeField] Material _BarkMaterial;
     [SerializeField] Material _LeavesMaterial;
     [SerializeField] Mesh _Mesh;
-    [SerializeField] uint _NumberOfInstances = 10;
+    [SerializeField] uint _NumInstanceLat = 20;
+    [SerializeField] uint _NumInstanceLon = 40;
+    uint _NumberOfInstances;
 
     GraphicsBuffer _BarkCommandBuffer;
     GraphicsBuffer _LeavesCommandBuffer;
@@ -19,6 +22,7 @@ public class ForestManager : MonoBehaviour
 
     void Start()
     {
+        _NumberOfInstances = _NumInstanceLat * _NumInstanceLon;
         _BarkCommandBuffer = new GraphicsBuffer(
             GraphicsBuffer.Target.IndirectArguments,
             1,
@@ -39,14 +43,39 @@ public class ForestManager : MonoBehaviour
             sizeof(float) * 4 * 4
         );
 
+        float3 sphereCenter = float3.zero;
+        float radius = 50f;
+        float scale = 0.25f;
+
         float4x4[] instanceData = new float4x4[_NumberOfInstances];
-        for (int i = 0; i < _NumberOfInstances; i++)
+        for (uint lat = 0; lat < _NumInstanceLat; lat++)
         {
-            float x = i * 10f;
-            float y = 0f;
-            float z = 0f;
-            float scale = 0.25f;
-            instanceData[i] = float4x4.TRS(new float3(x, y, z), quaternion.identity, new float3(scale, scale, scale));
+            float v = (float)lat / _NumInstanceLat;
+            float theta = v * math.PI;
+
+            float sinTheta = math.sin(theta);
+            float cosTheta = math.cos(theta);
+
+            for (uint lon = 0; lon < _NumInstanceLon; lon++)
+            {
+                float u = (float)lon / _NumInstanceLon;
+                float phi = u * math.PI2;
+
+                float3 normal = new float3(
+                    math.cos(phi) * sinTheta,
+                    cosTheta,
+                    math.sin(phi) * sinTheta
+                );
+
+                float3 pos = sphereCenter + normal * radius;
+
+                float3 tangent = math.normalize(math.cross(new float3(0, 1, 0), normal));
+                float3 forward = math.cross(normal, tangent);
+                quaternion rot = quaternion.LookRotationSafe(forward, normal);
+
+                uint index = lat * _NumInstanceLon + lon;
+                instanceData[index] = float4x4.TRS(pos, rot, new float3(scale));
+            }
         }
 
         _TransformBuffer.SetData(instanceData);
