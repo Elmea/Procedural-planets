@@ -12,11 +12,11 @@ public class ForestManager : MonoBehaviour
     [SerializeField] Material _BarkMaterial;
     [SerializeField] Material _LeavesMaterial;
     [SerializeField] ComputeShader _TreeCullingShader;
+    [SerializeField] bool _EnableCulling = true;
     [SerializeField] Mesh _Mesh;
-    [SerializeField] uint _NumInstanceLat = 20;
-    [SerializeField] uint _NumInstanceLon = 40;
     [SerializeField] float _MaxDrawDistance = 20f;
-    uint _NumberOfInstances;
+    [SerializeField] uint _NumberOfInstances;
+    [SerializeField] float _JitterAmount = 0.3f;
 
     GraphicsBuffer _CommandBuffer;
     GraphicsBuffer _CulledCommandBuffer;
@@ -27,7 +27,8 @@ public class ForestManager : MonoBehaviour
 
     void Start()
     {
-        _NumberOfInstances = _NumInstanceLat * _NumInstanceLon;
+        bool isCullingEnabled = _TreeCullingShader != null && _EnableCulling;
+
         _CommandBuffer = new GraphicsBuffer(
             GraphicsBuffer.Target.IndirectArguments,
             2,
@@ -52,46 +53,41 @@ public class ForestManager : MonoBehaviour
         float scale = 0.25f;
 
         float4x4[] instanceData = new float4x4[_NumberOfInstances];
-        for (uint lat = 0; lat < _NumInstanceLat; lat++)
+        var rand = new Unity.Mathematics.Random(307878359u);
+        // Calculate approximate arc length between points based on the area per point on the sphere
+        float arcLength = 2f / math.sqrt(_NumberOfInstances);
+
+        for (uint i = 0; i < _NumberOfInstances; i++)
         {
-            float v = (float)lat / _NumInstanceLat;
-            float theta = v * math.PI;
+            float3 dir = FibonacciPointOnSphere(i, _NumberOfInstances);
 
-            float sinTheta = math.sin(theta);
-            float cosTheta = math.cos(theta);
+            float jitter = arcLength * _JitterAmount;
+            float2 off = rand.NextFloat2Direction() * jitter;
 
-            for (uint lon = 0; lon < _NumInstanceLon; lon++)
-            {
-                float u = (float)lon / _NumInstanceLon;
-                float phi = u * math.PI2;
+            float3 up = math.abs(dir.y) > 0.9f ? new float3(1, 0, 0) : new float3(0, 1, 0);
+            float3 tangent = math.normalize(math.cross(up, dir));
+            float3 bitangent = math.cross(dir, tangent);
 
-                float3 normal = new float3(
-                    math.cos(phi) * sinTheta,
-                    cosTheta,
-                    math.sin(phi) * sinTheta
-                );
+            float3 perturbed = dir + off.x * tangent + off.y * bitangent;
+            dir = math.normalize(perturbed);
 
-                float3 pos = sphereCenter + normal * radius;
+            float3 pos = dir * radius;
+            float3 fwd = tangent;
+            quaternion rot = quaternion.LookRotationSafe(fwd, dir);
 
-                float3 tangent = math.normalize(math.cross(new float3(0, 1, 0), normal));
-                float3 forward = math.cross(normal, tangent);
-                quaternion rot = quaternion.LookRotationSafe(forward, normal);
-
-                uint index = lat * _NumInstanceLon + lon;
-                instanceData[index] = float4x4.TRS(pos, rot, new float3(scale));
-            }
+            instanceData[i] = float4x4.TRS(pos, rot, new float3(scale));
         }
 
         _TransformBuffer.SetData(instanceData);
 
         _InitCommandData[0].indexCountPerInstance = _Mesh.GetIndexCount(0);
-        _InitCommandData[0].instanceCount = 0;
+        _InitCommandData[0].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
         _InitCommandData[0].startIndex = (uint)_Mesh.GetIndexStart(0);
         _InitCommandData[0].baseVertexIndex = (uint)_Mesh.GetBaseVertex(0);
         _InitCommandData[0].startInstance = 0;
 
         _InitCommandData[1].indexCountPerInstance = _Mesh.GetIndexCount(1);
-        _InitCommandData[1].instanceCount = 0;
+        _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
         _InitCommandData[1].startIndex = (uint)_Mesh.GetIndexStart(1);
         _InitCommandData[1].baseVertexIndex = (uint)_Mesh.GetBaseVertex(1);
         _InitCommandData[1].startInstance = 0;
@@ -115,11 +111,14 @@ public class ForestManager : MonoBehaviour
     {
         if (_Mesh == null || _BarkMaterial == null)
             return;
+        bool isCullingEnabled = _TreeCullingShader != null && _EnableCulling;
+        _InitCommandData[0].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
+        _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
+        _CommandBuffer.SetData(_InitCommandData);
 
-        if (_TreeCullingShader != null)
+        if (isCullingEnabled)
         {
             int kernel = _TreeCullingShader.FindKernel("TreeCulling");
-            _CommandBuffer.SetData(_InitCommandData);
 
             _TreeCullingShader.SetInt("_InstanceCount", (int)_NumberOfInstances);
             _TreeCullingShader.SetVector("_CameraPos", Camera.main.transform.position);
@@ -141,12 +140,24 @@ public class ForestManager : MonoBehaviour
         var rp = new RenderParams(_BarkMaterial);
         rp.worldBounds = new Bounds(Vector3.zero, 10000f * Vector3.one);
         rp.matProps = new MaterialPropertyBlock();
-        rp.matProps.SetBuffer("_TransformBuffer", _VisibleTransformBuffer);
+        rp.matProps.SetBuffer("_TransformBuffer", isCullingEnabled ? _VisibleTransformBuffer : _TransformBuffer);
         rp.matProps.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
 
         Graphics.RenderMeshIndirect(rp, _Mesh, _CommandBuffer, 1, 0);
 
         rp.material = _LeavesMaterial;
         Graphics.RenderMeshIndirect(rp, _Mesh, _CommandBuffer, 1, 1);
+    }
+
+    private static float PHI = math.PI * (math.sqrt(5.0f) - 1.0f);
+    // https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere/26127012#26127012
+    float3 FibonacciPointOnSphere(uint i, uint n)
+    {
+        float y = 1f - 2f * ((i + 0.5f) / n);
+        float r = math.sqrt(1f - y * y);
+        float theta = PHI * i;
+        float x = math.cos(theta) * r;
+        float z = math.sin(theta) * r;
+        return new float3(x, y, z);
     }
 }
