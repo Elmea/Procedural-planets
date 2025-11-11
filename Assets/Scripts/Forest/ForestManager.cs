@@ -1,6 +1,9 @@
+using System;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.UIElements;
+using IndirectDrawArgs = UnityEngine.GraphicsBuffer.IndirectDrawIndexedArgs;
 
 // from the example found in the doc for Graphics.RenderMeshIndirect:
 // https://docs.unity3d.com/6000.2/Documentation/ScriptReference/Graphics.RenderMeshIndirect.html
@@ -8,36 +11,37 @@ public class ForestManager : MonoBehaviour
 {
     [SerializeField] Material _BarkMaterial;
     [SerializeField] Material _LeavesMaterial;
+    [SerializeField] ComputeShader _TreeCullingShader;
     [SerializeField] Mesh _Mesh;
     [SerializeField] uint _NumInstanceLat = 20;
     [SerializeField] uint _NumInstanceLon = 40;
+    [SerializeField] float _MaxDrawDistance = 20f;
     uint _NumberOfInstances;
 
-    GraphicsBuffer _BarkCommandBuffer;
-    GraphicsBuffer _LeavesCommandBuffer;
+    GraphicsBuffer _CommandBuffer;
+    GraphicsBuffer _CulledCommandBuffer;
     GraphicsBuffer _TransformBuffer;
+    GraphicsBuffer _VisibleTransformBuffer;
 
-    GraphicsBuffer.IndirectDrawIndexedArgs[] _BarkCommandData;
-    GraphicsBuffer.IndirectDrawIndexedArgs[] _LeavesCommandData;
+    IndirectDrawArgs[] _InitCommandData;
 
     void Start()
     {
         _NumberOfInstances = _NumInstanceLat * _NumInstanceLon;
-        _BarkCommandBuffer = new GraphicsBuffer(
+        _CommandBuffer = new GraphicsBuffer(
             GraphicsBuffer.Target.IndirectArguments,
-            1,
-            GraphicsBuffer.IndirectDrawIndexedArgs.size
-        );
-        _LeavesCommandBuffer = new GraphicsBuffer(
-            GraphicsBuffer.Target.IndirectArguments,
-            1,
-            GraphicsBuffer.IndirectDrawIndexedArgs.size
+            2,
+            IndirectDrawArgs.size
         );
 
-        _BarkCommandData = new GraphicsBuffer.IndirectDrawIndexedArgs[1];
-        _LeavesCommandData = new GraphicsBuffer.IndirectDrawIndexedArgs[1];
+        _InitCommandData = new IndirectDrawArgs[2];
 
         _TransformBuffer = new GraphicsBuffer(
+            GraphicsBuffer.Target.Structured,
+            (int)_NumberOfInstances,
+            sizeof(float) * 4 * 4
+        );
+        _VisibleTransformBuffer = new GraphicsBuffer(
             GraphicsBuffer.Target.Structured,
             (int)_NumberOfInstances,
             sizeof(float) * 4 * 4
@@ -80,48 +84,69 @@ public class ForestManager : MonoBehaviour
 
         _TransformBuffer.SetData(instanceData);
 
-        _BarkCommandData[0].indexCountPerInstance = _Mesh.GetIndexCount(0);
-        _BarkCommandData[0].instanceCount = _NumberOfInstances;
-        _BarkCommandData[0].startIndex = (uint)_Mesh.GetIndexStart(0);
-        _BarkCommandData[0].baseVertexIndex = (uint)_Mesh.GetBaseVertex(0);
-        _BarkCommandData[0].startInstance = 0;
+        _InitCommandData[0].indexCountPerInstance = _Mesh.GetIndexCount(0);
+        _InitCommandData[0].instanceCount = 0;
+        _InitCommandData[0].startIndex = (uint)_Mesh.GetIndexStart(0);
+        _InitCommandData[0].baseVertexIndex = (uint)_Mesh.GetBaseVertex(0);
+        _InitCommandData[0].startInstance = 0;
 
-        _LeavesCommandData[0].indexCountPerInstance = _Mesh.GetIndexCount(1);
-        _LeavesCommandData[0].instanceCount = _NumberOfInstances;
-        _LeavesCommandData[0].startIndex = (uint)_Mesh.GetIndexStart(1);
-        _LeavesCommandData[0].baseVertexIndex = (uint)_Mesh.GetBaseVertex(1);
-        _LeavesCommandData[0].startInstance = 0;
+        _InitCommandData[1].indexCountPerInstance = _Mesh.GetIndexCount(1);
+        _InitCommandData[1].instanceCount = 0;
+        _InitCommandData[1].startIndex = (uint)_Mesh.GetIndexStart(1);
+        _InitCommandData[1].baseVertexIndex = (uint)_Mesh.GetBaseVertex(1);
+        _InitCommandData[1].startInstance = 0;
 
-        _BarkCommandBuffer.SetData(_BarkCommandData);
-        _LeavesCommandBuffer.SetData(_LeavesCommandData);
+        _CommandBuffer.SetData(_InitCommandData);
     }
 
     void OnDestroy()
     {
-        _BarkCommandBuffer?.Release();
-        _BarkCommandBuffer = null;
-
-        _LeavesCommandBuffer?.Release();
-        _LeavesCommandBuffer = null;
-
         _TransformBuffer?.Release();
         _TransformBuffer = null;
+
+        _VisibleTransformBuffer?.Release();
+        _VisibleTransformBuffer = null;
+
+        _CommandBuffer?.Release();
+        _CommandBuffer = null;
     }
 
-    void Update()
+    void LateUpdate()
     {
         if (_Mesh == null || _BarkMaterial == null)
             return;
 
+        if (_TreeCullingShader != null)
+        {
+            int kernel = _TreeCullingShader.FindKernel("TreeCulling");
+            _CommandBuffer.SetData(_InitCommandData);
+
+            _TreeCullingShader.SetInt("_InstanceCount", (int)_NumberOfInstances);
+            _TreeCullingShader.SetVector("_CameraPos", Camera.main.transform.position);
+            _TreeCullingShader.SetFloat("_MaxDrawDistance", _MaxDrawDistance);
+            _TreeCullingShader.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
+
+            _TreeCullingShader.SetBuffer(kernel, "_AllTransforms", _TransformBuffer);
+            _TreeCullingShader.SetBuffer(kernel, "_VisibleTransforms", _VisibleTransformBuffer);
+            _TreeCullingShader.SetBuffer(kernel, "_IndirectArgs", _CommandBuffer);
+
+            _TreeCullingShader.Dispatch(
+                kernel,
+                Mathf.CeilToInt(_NumberOfInstances / 64f),
+                1,
+                1
+            );
+        }
+
         var rp = new RenderParams(_BarkMaterial);
         rp.worldBounds = new Bounds(Vector3.zero, 10000f * Vector3.one);
         rp.matProps = new MaterialPropertyBlock();
-        rp.matProps.SetBuffer("_TransformBuffer", _TransformBuffer);
+        rp.matProps.SetBuffer("_TransformBuffer", _VisibleTransformBuffer);
         rp.matProps.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
 
-        Graphics.RenderMeshIndirect(rp, _Mesh, _BarkCommandBuffer, 1);
+        Graphics.RenderMeshIndirect(rp, _Mesh, _CommandBuffer, 1, 0);
 
         rp.material = _LeavesMaterial;
-        Graphics.RenderMeshIndirect(rp, _Mesh, _LeavesCommandBuffer, 1);
+        Graphics.RenderMeshIndirect(rp, _Mesh, _CommandBuffer, 1, 1);
     }
 }

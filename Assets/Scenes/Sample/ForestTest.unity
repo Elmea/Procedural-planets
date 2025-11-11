@@ -150,9 +150,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _BarkMaterial: {fileID: 2100000, guid: 68ee8f34eda235f44b7f7143c5e7807f, type: 2}
   _LeavesMaterial: {fileID: 2100000, guid: adee49fe74d3c344189ac6ead689a668, type: 2}
+  _TreeCullingShader: {fileID: 7200000, guid: 0f32c2929f57e7641a2b3aee8c0bf38f, type: 3}
   _Mesh: {fileID: 4300000, guid: 4e34e0b91d1d747428bd7b8af8b5412f, type: 2}
   _NumInstanceLat: 20
   _NumInstanceLon: 40
+  _MaxDrawDistance: 40
 --- !u!4 &865947801
 Transform:
   m_ObjectHideFlags: 0
@@ -255,7 +257,7 @@ Transform:
   m_GameObject: {fileID: 1730803495}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalPosition: {x: 0, y: 1, z: -67}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
