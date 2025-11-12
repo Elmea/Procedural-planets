@@ -358,6 +358,7 @@ GameObject:
   m_Component:
   - component: {fileID: 948995997}
   - component: {fileID: 948995998}
+  - component: {fileID: 948995999}
   m_Layer: 0
   m_Name: Planet
   m_TagString: Untagged
@@ -404,6 +405,28 @@ MonoBehaviour:
   _OptionsSO: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
   _Enabled: 1
   _EnableWater: 1
+--- !u!114 &948995999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 948995996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b44dea0a1287034296098b1b49013a8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _BarkMaterial: {fileID: 2100000, guid: 68ee8f34eda235f44b7f7143c5e7807f, type: 2}
+  _LeavesMaterial: {fileID: 2100000, guid: adee49fe74d3c344189ac6ead689a668, type: 2}
+  _TreeCullingShader: {fileID: 7200000, guid: 0f32c2929f57e7641a2b3aee8c0bf38f, type: 3}
+  _EnableCulling: 1
+  _Mesh: {fileID: 4300000, guid: 4e34e0b91d1d747428bd7b8af8b5412f, type: 2}
+  _MaxDrawDistance: 1000
+  _NumberOfInstances: 2000000
+  _JitterAmount: 0.5
+  _PlanetOptions: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
+  _PlanetRadius: 16000
 --- !u!1 &1419418090
 GameObject:
   m_ObjectHideFlags: 0

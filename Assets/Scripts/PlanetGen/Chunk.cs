@@ -286,10 +286,13 @@ namespace PlanetGen
 
                 // 0 to 1 land mask
                 float landMask = math.smoothstep(SeaCoastLimit, LandCoastLimit, continentWithCoastline);
-                float land = CoastLandProfile(landMask);
+                float land = BurstUtils.CoastLandProfile(landMask, BaseLandLevel);
 
                 float hillsMask = math.smoothstep(LandCoastLimit, LandHillRampLimit, continentWithCoastline);
-                land = HillsField(posMeters, land, hillsMask);
+                land = BurstUtils.HillsField(posMeters, land, hillsMask, BaseLandLevel,
+                    PlanetRadius, HillsWavelength,
+                    HillsLacunarity, HillsOctaves, HillsPersistence,
+                    HillsAmplitudeMeters);
 
                 float mountainsMask = math.smoothstep(MountainStart, MountainRampLimit, continentWithCoastline);
                 land = MountainsField(posMeters, land, mountainsMask);
@@ -324,12 +327,6 @@ namespace PlanetGen
                 }
             }
 
-            float CoastLandProfile(float landMask)
-            {
-                float gradient = math.smoothstep(0f, 1f, landMask); // smoother 0 to 1
-                return BaseLandLevel * gradient; // meters above sea
-            }
-
             float OceanProfile(float landMask)
             {
                 float oceanFactor = 1f - landMask;
@@ -348,69 +345,15 @@ namespace PlanetGen
                 return math.lerp(-ShelfDepth, -OceanPlateauDepth, finalCoef);
             }
 
-            float HillsField(float3 posMeters, float coastValue, float hillsMask)
-            {
-                float hillsWavelength = PlanetRadius * HillsWavelength;
-                float baseFreq = 1f / math.max(hillsWavelength, 1e-6f);
-                float3 pt = posMeters * baseFreq;
-                //float3 ptWarped = Warp(pt, HillsWarpAmplitude, HillsWarpFrequency);
-                float hillsValue = FBM(pt, HillsLacunarity, HillsOctaves, HillsPersistence) * HillsAmplitudeMeters + BaseLandLevel;
-
-                return math.lerp(coastValue, hillsValue, hillsMask);
-            }
-
             float MountainsField(float3 posMeters, float hillsValue, float mountainsMask)
             {
                 float mountainWavelength = PlanetRadius * MountainWavelength;
                 float baseFreq = 1f / math.max(mountainWavelength, 1e-6f);
                 float3 pt = posMeters * baseFreq;
-                //float3 ptWarped = Warp(pt, MountainWarpAmplitude, MountainWarpFrequency);
-                float mountainsValue = RidgedFBM(pt, MountainLacunarity, MountainOctaves, MountainGain) * MountainAmplitudeMeters + hillsValue;
+
+                float mountainsValue = BurstUtils.RidgedFBM(pt, MountainLacunarity, MountainOctaves, MountainGain) * MountainAmplitudeMeters + hillsValue;
 
                 return math.lerp(hillsValue, mountainsValue, mountainsMask);
-            }
-
-            // FBM between 0 and 1
-            static float FBM(float3 pt, float lacunarity, int octaves, float persistence)
-            {
-                float a = 1f;
-                float amplitude = 0f;
-                float sum = 0f;
-                float3 q = pt;
-                for (int i = 0; i < octaves; i++)
-                {
-                    sum += a * noise.snoise(q);
-                    amplitude += a;
-                    q *= lacunarity;
-                    a *= persistence;
-                }
-                return (sum / math.max(amplitude, 1e-6f)) * 0.5f + 0.5f;
-            }
-
-            static float RidgedFBM(float3 pt, float lacunarity, int octaves, float gain)
-            {
-                float a = 1f;
-                float amplitude = 0f;
-                float sum = 0f;
-                float3 q = pt;
-                for (int i = 0; i < octaves; i++)
-                {
-                    float n = 1f - math.abs(noise.snoise(q));
-                    sum += a * n;
-                    amplitude += a;
-                    q *= lacunarity;
-                    a *= gain;
-                }
-                return sum / math.max(amplitude, 1e-6f);
-            }
-
-            static float3 Warp(float3 pt, float amplitude, float frequency)
-            {
-                float3 w;
-                w.x = noise.snoise(pt * frequency + new float3(37.2f, 15.7f, 91.1f));
-                w.y = noise.snoise(pt * frequency + new float3(-12.3f, 44.5f, 7.9f));
-                w.z = noise.snoise(pt * frequency + new float3(9.4f, -55.6f, 23.3f));
-                return pt + amplitude * w;
             }
         }
 

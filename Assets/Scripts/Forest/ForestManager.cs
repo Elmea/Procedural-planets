@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -23,7 +25,6 @@ public class ForestManager : MonoBehaviour
     [SerializeField] float _PlanetRadius;
 
     GraphicsBuffer _CommandBuffer;
-    GraphicsBuffer _CulledCommandBuffer;
     GraphicsBuffer _TransformBuffer;
     GraphicsBuffer _VisibleTransformBuffer;
 
@@ -43,49 +44,102 @@ public class ForestManager : MonoBehaviour
         _InitCommandData = new IndirectDrawArgs[2];
 
         float3 sphereCenter = float3.zero;
-        float radius = 50f;
         float scale = 0.25f;
 
-        float4x4[] instanceData = new float4x4[_NumberOfInstances];
-        int totalCount = 0;
-        var rand = new Unity.Mathematics.Random(307878359u);
-        // Calculate approximate arc length between points based on the area per point on the sphere
+        uint numThreads = (uint)Math.Max(1, Environment.ProcessorCount);
+        uint chunk = (_NumberOfInstances + numThreads - 1u) / numThreads;
+
+        var perThreadBuffers = new List<float4x4>[numThreads];
+        var perThreadCounts = new int[numThreads];
+        uint baseSeed = 307878359u;
+
         float arcLength = 2f / math.sqrt(_NumberOfInstances);
 
-        for (uint i = 0; i < _NumberOfInstances; i++)
+        Parallel.For(0, numThreads, t =>
         {
-            float3 dir = FibonacciPointOnSphere(i, _NumberOfInstances);
+            uint start = (uint)t * chunk;
+            uint end = math.min(start + chunk, _NumberOfInstances);
+            if (start >= end)
+            {
+                perThreadBuffers[t] = new List<float4x4>(0);
+                perThreadCounts[t] = 0;
+                return;
+            }
 
-            float jitter = arcLength * _JitterAmount;
-            float2 off = rand.NextFloat2Direction() * jitter;
+            uint seed = ScrambleSeed(baseSeed, (uint)t);
+            var rand = new Unity.Mathematics.Random(seed);
 
-            float3 up = math.abs(dir.y) > 0.9f ? new float3(1, 0, 0) : new float3(0, 1, 0);
-            float3 tangent = math.normalize(math.cross(up, dir));
-            float3 bitangent = math.cross(dir, tangent);
+            uint capacity = end - start;
+            var local = new List<float4x4>((int)capacity);
+            int localCount = 0;
 
-            float3 perturbed = dir + off.x * tangent + off.y * bitangent;
-            dir = math.normalize(perturbed);
+            for (uint i = (uint)start; i < (uint)end; i++)
+            {
+                float3 dir = FibonacciPointOnSphere(i, (uint)_NumberOfInstances);
 
-            float3 posOnPlanet = dir * (_PlanetRadius);
-            float continent = BurstUtils.ContinentField(posOnPlanet,
+                float jitter = arcLength * _JitterAmount;
+                float2 off = rand.NextFloat2Direction() * jitter;
+
+                float3 up = math.abs(dir.y) > 0.9f ? new float3(1, 0, 0) : new float3(0, 1, 0);
+                float3 tangent = math.normalize(math.cross(up, dir));
+                float3 bitangent = math.cross(dir, tangent);
+
+                float3 perturbed = dir + off.x * tangent + off.y * bitangent;
+                dir = math.normalize(perturbed);
+
+                float3 posOnPlanet = dir * _PlanetRadius;
+
+                float continent = BurstUtils.ContinentField(
+                    posOnPlanet,
                     _PlanetRadius, _PlanetOptions.ContinentWavelength,
                     _PlanetOptions.ContinentWarpAmplitude, _PlanetOptions.ContinentWarpFrequency,
                     _PlanetOptions.ContinentLacunarity, _PlanetOptions.ContinentOctaves, _PlanetOptions.ContinentPersistence);
-            float coastlineOffset = BurstUtils.CoastBreaker(posOnPlanet, _PlanetRadius);
 
-            float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f));
+                float coastlineOffset = BurstUtils.CoastBreaker(posOnPlanet, _PlanetRadius);
 
-            float landMask = math.smoothstep(_PlanetOptions.SeaCoastLimit, _PlanetOptions.LandCoastLimit, continentWithCoastline);
+                float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f));
+                float landMask = math.smoothstep(_PlanetOptions.SeaCoastLimit, _PlanetOptions.LandCoastLimit, continentWithCoastline);
 
-            if (landMask < 1.0f || continentWithCoastline > _PlanetOptions.MountainStart)
-                continue;
+                if (landMask < 1.0f || continentWithCoastline > _PlanetOptions.MountainStart)
+                    continue;
 
-            float3 pos = dir * radius;
-            float3 fwd = tangent;
-            quaternion rot = quaternion.LookRotationSafe(fwd, dir);
+                float land = BurstUtils.CoastLandProfile(landMask, _PlanetOptions.BaseLandLevel);
 
-            instanceData[totalCount++] = float4x4.TRS(pos, rot, new float3(scale));
+                float hillsMask = math.smoothstep(_PlanetOptions.LandCoastLimit, _PlanetOptions.LandHillRampLimit, continentWithCoastline);
+                land = BurstUtils.HillsField(
+                    posOnPlanet, land, hillsMask, _PlanetOptions.BaseLandLevel,
+                    _PlanetRadius, _PlanetOptions.HillsWavelength,
+                    _PlanetOptions.HillsLacunarity, _PlanetOptions.HillsOctaves, _PlanetOptions.HillsPersistence,
+                    _PlanetOptions.HillsAmplitudeMeters);
+
+                float3 pos = dir * (_PlanetRadius + land);
+                float3 fwd = tangent;
+                quaternion rot = quaternion.LookRotationSafe(fwd, dir);
+
+                local.Add(float4x4.TRS(pos, rot, scale));
+                localCount++;
+            }
+
+            perThreadBuffers[t] = local;
+            perThreadCounts[t] = localCount;
+        });
+
+        int totalCount = 0;
+        for (int t = 0; t < numThreads; ++t) 
+            totalCount += perThreadCounts[t];
+
+        var merged = new float4x4[totalCount];
+        int index = 0;
+        for (int t = 0; t < numThreads; ++t)
+        {
+            var buf = perThreadBuffers[t];
+            int cnt = perThreadCounts[t];
+            if (cnt == 0) continue;
+
+            buf.CopyTo(0, merged, index, cnt);
+            index += cnt;
         }
+
         _KeptNumberOfInstances = totalCount;
         _TransformBuffer = new GraphicsBuffer(
             GraphicsBuffer.Target.Structured,
@@ -98,7 +152,9 @@ public class ForestManager : MonoBehaviour
             sizeof(float) * 4 * 4
         );
 
-        _TransformBuffer.SetData(instanceData,0, 0, totalCount);
+        Debug.Log("ForestManager: kept " + _KeptNumberOfInstances + " instances out of " + _NumberOfInstances);
+
+        _TransformBuffer.SetData(merged, 0, 0, totalCount);
 
         _InitCommandData[0].indexCountPerInstance = _Mesh.GetIndexCount(0);
         _InitCommandData[0].instanceCount = isCullingEnabled ? 0 : (uint)_KeptNumberOfInstances;
@@ -158,7 +214,7 @@ public class ForestManager : MonoBehaviour
         }
 
         var rp = new RenderParams(_BarkMaterial);
-        rp.worldBounds = new Bounds(Vector3.zero, 10000f * Vector3.one);
+        rp.worldBounds = new Bounds(transform.position, (_PlanetRadius + _PlanetOptions.MountainAmplitudeMeters * 10) * Vector3.one);
         rp.matProps = new MaterialPropertyBlock();
         rp.matProps.SetBuffer("_TransformBuffer", isCullingEnabled ? _VisibleTransformBuffer : _TransformBuffer);
         rp.matProps.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
@@ -179,5 +235,14 @@ public class ForestManager : MonoBehaviour
         float x = math.cos(theta) * r;
         float z = math.sin(theta) * r;
         return new float3(x, y, z);
+    }
+
+    // just a hash
+    private static uint ScrambleSeed(uint baseSeed, uint threadIndex)
+    {
+        uint s = baseSeed ^ (threadIndex * 747796405u) ^ 2891336453u;
+        if (s == 0u) 
+            s = 0xA3C59AC3u;
+        return s;
     }
 }

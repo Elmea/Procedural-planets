@@ -1,7 +1,7 @@
-using UnityEngine;
 using Unity.Burst;
 using Unity.Mathematics;
 
+// functions that we also are using to generate basic tree positions on the planet surface
 [BurstCompile]
 public static class BurstUtils
 {
@@ -32,6 +32,26 @@ public static class BurstUtils
         r = 0.5f * (r + 1f);
         return r;
     }
+
+    public static float CoastLandProfile(float landMask, float baseLandLevel)
+    {
+        float gradient = math.smoothstep(0f, 1f, landMask); // smoother 0 to 1
+        return baseLandLevel * gradient; // meters above sea
+    }
+
+    public static float HillsField(float3 posMeters, float coastValue, float hillsMask, float baseLandLevel,
+                                   float planetRadius, float hillsWavelength,
+                                   float hillsLacunarity, int hillsOctaves, float hillsPersistence,
+                                   float hillsAmplitudeMeters)
+    {
+        hillsWavelength = planetRadius * hillsWavelength;
+        float baseFreq = 1f / math.max(hillsWavelength, 1e-6f);
+        float3 pt = posMeters * baseFreq;
+
+        float hillsValue = FBM(pt, hillsLacunarity, hillsOctaves, hillsPersistence) * hillsAmplitudeMeters + baseLandLevel;
+        return math.lerp(coastValue, hillsValue, hillsMask);
+    }
+
 
     // FBM between 0 and 1
     public static float FBM(float3 pt, float lacunarity, int octaves, float persistence)
