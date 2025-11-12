@@ -391,6 +391,7 @@ GameObject:
   - component: {fileID: 582083363}
   - component: {fileID: 582083362}
   - component: {fileID: 582083364}
+  - component: {fileID: 582083365}
   m_Layer: 0
   m_Name: Planet
   m_TagString: Untagged
@@ -411,7 +412,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _Resolution: 128
-  _PlanetRadius: 16000
   _MinLeafSize: 64
   _BudgetPerFrame: 16
   _EnableCulling: 0
@@ -450,6 +450,30 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CloudParameters: {fileID: 11400000, guid: e7c0116e8bf8d26438fb2beee2e394dd, type: 2}
+--- !u!114 &582083365
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 582083361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b44dea0a1287034296098b1b49013a8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _BarkMaterial: {fileID: 2100000, guid: 68ee8f34eda235f44b7f7143c5e7807f, type: 2}
+  _LeavesMaterial: {fileID: 2100000, guid: adee49fe74d3c344189ac6ead689a668, type: 2}
+  _TreeCullingShader: {fileID: 7200000, guid: 0f32c2929f57e7641a2b3aee8c0bf38f, type: 3}
+  _EnableCulling: 1
+  _Mesh: {fileID: 4300000, guid: 4e34e0b91d1d747428bd7b8af8b5412f, type: 2}
+  _MaxDrawDistance: 1000
+  _NumberOfInstances: 2000000
+  _TransformBufferAsset: {fileID: 4900000, guid: c029537692126d546af0ed233c564c88, type: 3}
+  _JitterAmount: 1
+  _PlanetOptions: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
+  _MinTreeScale: 0.2
+  _MaxTreeScale: 0.3
 --- !u!1 &591130365
 GameObject:
   m_ObjectHideFlags: 0
