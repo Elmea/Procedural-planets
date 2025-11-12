@@ -156,6 +156,8 @@ MonoBehaviour:
   _MaxDrawDistance: 40
   _NumberOfInstances: 800
   _JitterAmount: 0.5
+  _PlanetOptions: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
+  _PlanetRadius: 16000
 --- !u!4 &865947801
 Transform:
   m_ObjectHideFlags: 0

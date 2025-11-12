@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -15,8 +16,11 @@ public class ForestManager : MonoBehaviour
     [SerializeField] bool _EnableCulling = true;
     [SerializeField] Mesh _Mesh;
     [SerializeField] float _MaxDrawDistance = 20f;
+    [Tooltip("It's the total number of instances before culling based on the land mask")]
     [SerializeField] uint _NumberOfInstances;
     [SerializeField] float _JitterAmount = 0.3f;
+    [SerializeField] PlanetOptionsSO _PlanetOptions;
+    [SerializeField] float _PlanetRadius;
 
     GraphicsBuffer _CommandBuffer;
     GraphicsBuffer _CulledCommandBuffer;
@@ -24,6 +28,7 @@ public class ForestManager : MonoBehaviour
     GraphicsBuffer _VisibleTransformBuffer;
 
     IndirectDrawArgs[] _InitCommandData;
+    int _KeptNumberOfInstances;
 
     void Start()
     {
@@ -37,22 +42,12 @@ public class ForestManager : MonoBehaviour
 
         _InitCommandData = new IndirectDrawArgs[2];
 
-        _TransformBuffer = new GraphicsBuffer(
-            GraphicsBuffer.Target.Structured,
-            (int)_NumberOfInstances,
-            sizeof(float) * 4 * 4
-        );
-        _VisibleTransformBuffer = new GraphicsBuffer(
-            GraphicsBuffer.Target.Structured,
-            (int)_NumberOfInstances,
-            sizeof(float) * 4 * 4
-        );
-
         float3 sphereCenter = float3.zero;
         float radius = 50f;
         float scale = 0.25f;
 
         float4x4[] instanceData = new float4x4[_NumberOfInstances];
+        int totalCount = 0;
         var rand = new Unity.Mathematics.Random(307878359u);
         // Calculate approximate arc length between points based on the area per point on the sphere
         float arcLength = 2f / math.sqrt(_NumberOfInstances);
@@ -71,23 +66,48 @@ public class ForestManager : MonoBehaviour
             float3 perturbed = dir + off.x * tangent + off.y * bitangent;
             dir = math.normalize(perturbed);
 
+            float3 posOnPlanet = dir * (_PlanetRadius);
+            float continent = BurstUtils.ContinentField(posOnPlanet,
+                    _PlanetRadius, _PlanetOptions.ContinentWavelength,
+                    _PlanetOptions.ContinentWarpAmplitude, _PlanetOptions.ContinentWarpFrequency,
+                    _PlanetOptions.ContinentLacunarity, _PlanetOptions.ContinentOctaves, _PlanetOptions.ContinentPersistence);
+            float coastlineOffset = BurstUtils.CoastBreaker(posOnPlanet, _PlanetRadius);
+
+            float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f));
+
+            float landMask = math.smoothstep(_PlanetOptions.SeaCoastLimit, _PlanetOptions.LandCoastLimit, continentWithCoastline);
+
+            if (landMask < 1.0f || continentWithCoastline > _PlanetOptions.MountainStart)
+                continue;
+
             float3 pos = dir * radius;
             float3 fwd = tangent;
             quaternion rot = quaternion.LookRotationSafe(fwd, dir);
 
-            instanceData[i] = float4x4.TRS(pos, rot, new float3(scale));
+            instanceData[totalCount++] = float4x4.TRS(pos, rot, new float3(scale));
         }
+        _KeptNumberOfInstances = totalCount;
+        _TransformBuffer = new GraphicsBuffer(
+            GraphicsBuffer.Target.Structured,
+            _KeptNumberOfInstances,
+            sizeof(float) * 4 * 4
+        );
+        _VisibleTransformBuffer = new GraphicsBuffer(
+            GraphicsBuffer.Target.Structured,
+            _KeptNumberOfInstances,
+            sizeof(float) * 4 * 4
+        );
 
-        _TransformBuffer.SetData(instanceData);
+        _TransformBuffer.SetData(instanceData,0, 0, totalCount);
 
         _InitCommandData[0].indexCountPerInstance = _Mesh.GetIndexCount(0);
-        _InitCommandData[0].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
+        _InitCommandData[0].instanceCount = isCullingEnabled ? 0 : (uint)_KeptNumberOfInstances;
         _InitCommandData[0].startIndex = (uint)_Mesh.GetIndexStart(0);
         _InitCommandData[0].baseVertexIndex = (uint)_Mesh.GetBaseVertex(0);
         _InitCommandData[0].startInstance = 0;
 
         _InitCommandData[1].indexCountPerInstance = _Mesh.GetIndexCount(1);
-        _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
+        _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : (uint)_KeptNumberOfInstances;
         _InitCommandData[1].startIndex = (uint)_Mesh.GetIndexStart(1);
         _InitCommandData[1].baseVertexIndex = (uint)_Mesh.GetBaseVertex(1);
         _InitCommandData[1].startInstance = 0;
@@ -112,15 +132,15 @@ public class ForestManager : MonoBehaviour
         if (_Mesh == null || _BarkMaterial == null)
             return;
         bool isCullingEnabled = _TreeCullingShader != null && _EnableCulling;
-        _InitCommandData[0].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
-        _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : _NumberOfInstances;
+        _InitCommandData[0].instanceCount = isCullingEnabled ? 0 : (uint)_KeptNumberOfInstances;
+        _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : (uint)_KeptNumberOfInstances;
         _CommandBuffer.SetData(_InitCommandData);
 
         if (isCullingEnabled)
         {
             int kernel = _TreeCullingShader.FindKernel("TreeCulling");
 
-            _TreeCullingShader.SetInt("_InstanceCount", (int)_NumberOfInstances);
+            _TreeCullingShader.SetInt("_InstanceCount", _KeptNumberOfInstances);
             _TreeCullingShader.SetVector("_CameraPos", Camera.main.transform.position);
             _TreeCullingShader.SetFloat("_MaxDrawDistance", _MaxDrawDistance);
             _TreeCullingShader.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
@@ -131,7 +151,7 @@ public class ForestManager : MonoBehaviour
 
             _TreeCullingShader.Dispatch(
                 kernel,
-                Mathf.CeilToInt(_NumberOfInstances / 64f),
+                Mathf.CeilToInt(_KeptNumberOfInstances / 64f),
                 1,
                 1
             );

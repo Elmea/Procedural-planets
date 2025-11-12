@@ -276,8 +276,11 @@ namespace PlanetGen
                 float3 noiseDir = math.mul(WorldRot, dir); // to have a 3d noise that wraps around the sphere instead of local to the face
 
                 float3 posMeters = noiseDir * PlanetRadius; // pos at scale
-                float continent = ContinentField(posMeters); // try to delimit continents
-                float coastlineOffset = CoastBreaker(posMeters, PlanetRadius);
+                float continent = BurstUtils.ContinentField(posMeters,
+                    PlanetRadius, ContinentWavelength,
+                    WarpAmplitude, WarpFrequency,
+                    ContinentLacunarity, ContinentOctaves, ContinentPersistence); // try to delimit continents
+                float coastlineOffset = BurstUtils.CoastBreaker(posMeters, PlanetRadius);
 
                 float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f)); // try to get more interesting coastlines
 
@@ -313,24 +316,12 @@ namespace PlanetGen
                         Colors[index] = new float4(new float3(0.855f, 0.761f, 0.624f), 1.0f);
                     else
                     {
-                        if (continentWithCoastline > 0.7f)
+                        if (continentWithCoastline > MountainStart)
                             Colors[index] = new float4(new float3(0.275f, 0.247f, 0.18f), 1.0f);
                         else
                             Colors[index] = new float4(new float3(0.408f, 0.741f, 0.337f), 1.0f);
                     }
                 }
-            }
-
-            float ContinentField(float3 posMeters)
-            {
-                float continentWavelength = PlanetRadius * ContinentWavelength;
-                float baseFreq = 1f / continentWavelength;
-
-                float3 pt = posMeters * baseFreq;
-                float3 ptWarped = Warp(pt, WarpAmplitude, WarpFrequency);
-                float height = FBM(ptWarped, ContinentLacunarity, ContinentOctaves, ContinentPersistence);
-
-                return height;
             }
 
             float CoastLandProfile(float landMask)
@@ -355,19 +346,6 @@ namespace PlanetGen
                 float t2 = (oceanFactor - ShelfPortion) / math.max(1f - ShelfPortion, 1e-6f);
                 float finalCoef = math.pow(math.saturate(t2), math.max(ShelfSharpness, 1.0f));
                 return math.lerp(-ShelfDepth, -OceanPlateauDepth, finalCoef);
-            }
-
-            // attempt to make a noise that looks like coastlines
-            static float CoastBreaker(float3 posMeters, float planetRadiusMeters)
-            {
-                float wavelength = planetRadiusMeters * 0.10f;
-                float freq = 1f / wavelength;
-
-                float3 p = posMeters * freq;
-                float3 pw = Warp(p, 0.5f, 2.0f);
-                float r = FBM(pw, 2.0f, 4, 0.5f);
-                r = 0.5f * (r + 1f);
-                return r;
             }
 
             float HillsField(float3 posMeters, float coastValue, float hillsMask)
