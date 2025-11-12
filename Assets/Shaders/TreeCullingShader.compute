@@ -1,0 +1,53 @@
+#pragma kernel TreeCulling
+// example used: https://github.com/ColinLeung-NiloCat/UnityURP-MobileDrawMeshInstancedIndirectExample/blob/master/Assets/URPMobileGrassInstancedIndirectDemo/InstancedIndirectGrass/Core/CullingCompute.compute
+
+int _InstanceCount;
+float3 _CameraPos;
+float  _MaxDrawDistance;
+float4x4 _ObjectToWorld;
+float4 _FrustumPlanes[6];
+float _BoundingSphereRadius;
+
+StructuredBuffer<float4x4> _AllTransforms;
+// since we have to do an interlock anyway, we can't use AppendStructuredBuffer
+RWStructuredBuffer<float4x4> _VisibleTransforms;
+RWStructuredBuffer<uint> _IndirectArgs;
+
+
+
+[numthreads(64, 1, 1)]
+void TreeCulling(uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if (index >= (uint)_InstanceCount)
+        return;
+
+    float4x4 localM = _AllTransforms[index];
+
+    float4x4 worldM = mul(_ObjectToWorld, localM);
+    float3 pos = float3(worldM[0].w, worldM[1].w, worldM[2].w); 
+
+    float dist = distance(pos, _CameraPos);
+
+    if (dist <= _MaxDrawDistance)
+    {
+        // Frustum culling
+        float outside = 1e32;
+
+        [unroll]
+        for (int i = 0; i < 6; i++)
+        {
+            float4 plane = _FrustumPlanes[i];
+            float radius = dot(float4(pos, 1.0), plane); // n.x+d=0
+            outside = min(outside, radius + _BoundingSphereRadius);
+        }
+        // branchless for SIMT
+        if (outside < 0)
+            return;
+
+        uint dstIndex;
+        InterlockedAdd(_IndirectArgs[1], 1, dstIndex); // for bark
+        InterlockedAdd(_IndirectArgs[6], 1); // for leaves (just need to be incremented)
+        _VisibleTransforms[dstIndex] = worldM;
+    }
+}
