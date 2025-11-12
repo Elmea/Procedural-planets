@@ -23,6 +23,8 @@ public class ForestManager : MonoBehaviour
     [SerializeField] float _JitterAmount = 0.3f;
     [SerializeField] PlanetOptionsSO _PlanetOptions;
     [SerializeField] float _PlanetRadius;
+    [SerializeField] float _MinTreeScale = 0.2f;
+    [SerializeField] float _MaxTreeScale = 0.3f;
 
     GraphicsBuffer _CommandBuffer;
     GraphicsBuffer _TransformBuffer;
@@ -44,7 +46,6 @@ public class ForestManager : MonoBehaviour
         _InitCommandData = new IndirectDrawArgs[2];
 
         float3 sphereCenter = float3.zero;
-        float scale = 0.25f;
 
         uint numThreads = (uint)Math.Max(1, Environment.ProcessorCount);
         uint chunk = (_NumberOfInstances + numThreads - 1u) / numThreads;
@@ -116,7 +117,8 @@ public class ForestManager : MonoBehaviour
                 float3 fwd = tangent;
                 quaternion rot = quaternion.LookRotationSafe(fwd, dir);
 
-                local.Add(float4x4.TRS(pos, rot, scale));
+                float scaleValue = math.lerp(_MinTreeScale, _MaxTreeScale, rand.NextFloat());
+                local.Add(float4x4.TRS(pos, rot, scaleValue));
                 localCount++;
             }
 
@@ -192,6 +194,19 @@ public class ForestManager : MonoBehaviour
         _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : (uint)_KeptNumberOfInstances;
         _CommandBuffer.SetData(_InitCommandData);
 
+        Plane[] planes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
+        Vector4[] planeVectors = new Vector4[6];
+        for (int i = 0; i < planes.Length; i++)
+        {
+            Vector3 normal = planes[i].normal;
+
+            // just to be sure everything is normal (drum roll)
+            float inverseLength = 1.0f / normal.magnitude;
+            normal *= inverseLength;
+            float distance = planes[i].distance * inverseLength;
+            planeVectors[i] = new Vector4(normal.x, normal.y, normal.z, distance);
+        }
+
         if (isCullingEnabled)
         {
             int kernel = _TreeCullingShader.FindKernel("TreeCulling");
@@ -200,6 +215,8 @@ public class ForestManager : MonoBehaviour
             _TreeCullingShader.SetVector("_CameraPos", Camera.main.transform.position);
             _TreeCullingShader.SetFloat("_MaxDrawDistance", _MaxDrawDistance);
             _TreeCullingShader.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
+            _TreeCullingShader.SetVectorArray("_FrustumPlanes", planeVectors);
+            _TreeCullingShader.SetFloat("_BoundingSphereRadius", _Mesh.bounds.extents.magnitude * _MaxTreeScale);
 
             _TreeCullingShader.SetBuffer(kernel, "_AllTransforms", _TransformBuffer);
             _TreeCullingShader.SetBuffer(kernel, "_VisibleTransforms", _VisibleTransformBuffer);

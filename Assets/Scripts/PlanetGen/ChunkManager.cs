@@ -265,6 +265,7 @@ namespace PlanetGen
                     Gizmos.DrawWireCube(nodeBounds.center, nodeBounds.size);
                 }
             }
+
             Gizmos.color = Color.cyan;
             Gizmos.matrix = _CullCamera.transform.localToWorldMatrix;
             Gizmos.DrawFrustum(new Vector3(), _CullCamera.fieldOfView, _CullCamera.farClipPlane, _CullCamera.nearClipPlane, _CullCamera.aspect);
