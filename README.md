@@ -1,5 +1,61 @@
 # World Generation
 
+This section will explain the various things needed to generate the shape of the world and render it in an semi-optimized manner. This includes the separation between land and sea, the coast lines as well as the different land biomes. As a bonus, we also added the trees on the planet as well as a fake sea.
+
+## Handling Level of Detail for the planet
+
+To handle the level of detail of the planet, we used a quadtree structure. Each face of the cube that makes the base of the planet is subdivided into 4 parts when the camera is close enough to it. This allows us to have a high level of detail when close to the ground, and a low level of detail when far away from it as shown in the image below.
+
+![](ReadMeAssets/LODPlanetDebug.png) <br/>
+
+Each chunk of terrain has the same amount of vertices, but the distance between each vertex is different depending on the level of detail of the chunk. One thing that isn't handled in this implementation is the transition between two chunks of different levels of detail. To have seamless transitions, we should have added skirts to the edges of the chunks.
+
+Various settings can be tweaked to change the way the level of detail is handled in the `ChunkManager` class.
+
+![](ReadMeAssets/LODPlanetSettings.png)
+
+The three main settings that will influence the level of detail are:
+`Resolution`: This setting changes the number of vertices per chunk.
+`Min Leaf Size`: This setting changes the minimum size a chunk can have in world units.
+`Budget Per Frame`: This setting changes the number of chunks that can be created or destroyed per frame.
+
+Most of them will highly influence the performance and the visual quality of the planet. There are some debug options to visualize the chunks and their levels of detail. Notably the `Enable Debug Quad` option as well as the `Debug Chunk` option. None of these options should be enabled in at play time.
+
+If the culling option for the quad tree is enabled, it will actually tank the performances and will introduce popping when the camera is moving. It is recommended to keep it disabled. It was only implemented as a test.
+
+Note that the planet chunk meshes are generated procedurally at runtime using Burst Jobs. The next step would be to generate them in compute shaders as height maps to further improve the performance and be able to re-use this data elsewhere.
+
+## Generation of the continents & land shape
+
+To generate the shape of the continents, coastlines and biomes, we used a combination of noise functions. The main noise function is a simplex noise that is used to generate the height of the terrain. This noise is then combined with other noise functions to create the final shape of the terrain.
+
+For the continents, we used a low frequency warped + FBM noise to create large landmasses. This noise will shape the general outline of the continents. To add more details to the coastlines, we used a higher frequency warped + FBM noise. After this, depending on the height of the terrain, we can determine if a point is land or sea. If it's in land as well as above a certain height, we can determine the biome of the point (beach, hills/ plains, mountains).
+
+All of it can be tweaked in a scriptable object called `PlanetOptionsSO`.
+
+![](ReadMeAssets/PlanetOptionsSO.png)
+
+Most of them are to adjust limits for the different biomes as well as the noise parameters. The "limits" parameters are between 0 and 1 with 0.5 being the sea level.
+
+## Ocean
+
+For the ocean, we simply created a sphere mesh that is the same size as the planet. This sphere is then rendered with a simple shader. It leverages the quad tree structure to be rendered efficiently. It is a part of the `ChunkManager` class.
+
+## Forest Rendering
+
+To render the trees on the planet, we first generate points on the surface of the planet as a golden spiral with some jittering. Then, for each point, we determine if it is in a biome that can have trees (plains/ hills). If it is, we add it to a big buffer of tree transforms. This process is done at editor time to avoid performance issues at runtime at the start. We use the same functions as for the noise used to generate the planet's land shape.
+
+At the start, we give this buffer to a compute shader that will cull the trees that are not visible from the camera and at a distance greater than a certain threshold. The remaining trees are then rendered using GPU indirect rendering.
+
+![](ReadMeAssets/TreePreview.png)
+![](ReadMeAssets/TreeCullingDebug.png)
+
+Unfortunately, I'm not experienced enough with URP to produce a good tree shader. Also, note that the trees don't have LODs implemented yet. This is something that could be improved in the future.
+
+The various parameters for the tree generation can be tweaked directly in the `ForestManager`. Use the `Generate Forest Positions` button to generate the tree positions again after changing the parameters.
+
+![](ReadMeAssets/ForestManager.png)
+
 # Cloud Generation
 
 # Tree Generation
