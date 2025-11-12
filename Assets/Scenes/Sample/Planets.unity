@@ -404,6 +404,7 @@ MonoBehaviour:
   _OptionsSO: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
   _Enabled: 1
   _EnableWater: 1
+  _DebugChunks: 0
 --- !u!114 &948995999
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -34,6 +34,7 @@ namespace PlanetGen
         [SerializeField] private PlanetOptionsSO _OptionsSO;
         [SerializeField] private bool _Enabled = true;
         [SerializeField] private bool _EnableWater = true;
+        [SerializeField] private bool _DebugChunks = false;
 
         private Dictionary<QuadNode, Chunk> _TerrainChunks = new();
         private Dictionary<QuadNode, Chunk> _WaterChunks = new();
@@ -171,7 +172,8 @@ namespace PlanetGen
                 double3 qtNoRotCenter = qtb.Center;
                 qtNoRotCenter.y = _OptionsSO.PlanetRadius;
                 qtNoRotCenter = math.normalize(qtNoRotCenter) * _OptionsSO.PlanetRadius;
-                chunk.Initialize(_Resolution, b.Size, _TerrainChunkMaterial, false, _OptionsSO.PlanetRadius, qtb.Center, qtNoRotCenter);
+                chunk.Initialize(_Resolution, b.Size, _TerrainChunkMaterial, 
+                    false, _OptionsSO.PlanetRadius, qtb.Center, qtNoRotCenter, _DebugChunks);
 
                 var tris = SharedTrianglesCache.Get(_Resolution);
                 var h = chunk.ScheduleBuild(tris, _OptionsSO);
@@ -187,7 +189,7 @@ namespace PlanetGen
                     waterChunk.transform.SetParent(transform, false);
                     waterChunk.transform.localPosition = new Vector3((float)b.Center.x, (float)b.Center.y, (float)b.Center.z);
                     waterChunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
-                    waterChunk.Initialize(_Resolution, b.Size, _WaterChunkMaterial, true, _OptionsSO.PlanetRadius, qtb.Center, qtNoRotCenter);
+                    waterChunk.Initialize(_Resolution, b.Size, _WaterChunkMaterial, true, _OptionsSO.PlanetRadius, qtb.Center, qtNoRotCenter, _DebugChunks);
                     var waterH = waterChunk.ScheduleBuild(tris, _OptionsSO);
                     _Handles.Add(waterH);
                     _WaterChunks[key] = waterChunk;

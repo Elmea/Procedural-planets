@@ -33,7 +33,8 @@ namespace PlanetGen
 
         public void Initialize(int resolution, double chunkSize, 
             Material mat, bool isWater,
-            float planetRadius, double3 qtCenter, double3 qtSphereNoRotCenter)
+            float planetRadius, double3 qtCenter, double3 qtSphereNoRotCenter,
+            bool debugChunks)
         {
             _Resolution = math.max(2, resolution);
             _Size = math.max(1f, chunkSize);
@@ -49,6 +50,11 @@ namespace PlanetGen
             _QuadTreeBoundsCenter = qtCenter;
             _QuadTreeSphereNoRotCenter = qtSphereNoRotCenter;
             _IsWater = isWater;
+            if (debugChunks)
+            {
+                float scale = 1f - (1f / (float)chunkSize);
+                transform.localScale = new Vector3(scale, scale, scale);
+            }
         }
 
         public void Dispose()
