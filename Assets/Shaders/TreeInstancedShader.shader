@@ -5,41 +5,30 @@ Shader "Custom/TreeInstanced"
         _MainTex    ("Albedo (RGB)", 2D) = "white" {}
         _MaskTex    ("Roughness-Metallic Map", 2D) = "white" {}
         _BumpMap    ("Normal Map", 2D) = "bump" {}
-        [Enum(Off,0,Front,1,Back,2)] _Cull("Cull Mode", Float) = 2
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline" }
-
         Pass
         {
-            Name "ForwardPass"
-            Tags { "LightMode"="UniversalForward" }
-            Cull [_Cull]
-            
-            ZWrite True
-            
-            HLSLPROGRAM
+            CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma shader_feature _FORWARD_PLUS
-            #pragma shader_feature_fragment _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
 
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "UnityCG.cginc"
+            #include "UnityLightingCommon.cginc"
 
             #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
             #include "UnityIndirect.cginc"
 
-            CBUFFER_START(UnityPerMaterial)
-            uniform float4x4 _ObjectToWorld;
-            float4 _MainTex_ST;
-            CBUFFER_END
             sampler2D _MainTex;
             sampler2D _MaskTex;
             sampler2D _BumpMap;
+            float4 _MainTex_ST;
+            float _Glossiness;
+            float _Metallic;
 
             StructuredBuffer<float4x4> _TransformBuffer;
+            uniform float4x4 _ObjectToWorld;
 
             struct appdata
             {
@@ -91,27 +80,34 @@ Shader "Custom/TreeInstanced"
                     discard;
 
                 float4 maskSample = tex2D(_MaskTex, i.uv);
+                float smoothness  = maskSample.g;
+                float metallic    = maskSample.b;
+
                 float3 tNormal = UnpackNormal(tex2D(_BumpMap, i.uv));
-                
-                InputData lighting = (InputData)0;
-                SurfaceData surface = (SurfaceData)0;
-                lighting.positionCS = i.pos;
-                lighting.positionWS = i.worldPos;
-                lighting.normalWS = normalize(i.worldNormal);
-                lighting.viewDirectionWS = GetWorldSpaceViewDir(i.worldPos);
-                lighting.shadowCoord = TransformWorldToShadowCoord(i.worldPos);
-                
-                surface.albedo = albedo;
-                surface.alpha = alpha;
-                surface.metallic = 1-maskSample.b;
-                surface.smoothness = 1-maskSample.g;
-                surface.occlusion = maskSample.a;
-                surface.normalTS = tNormal;
-                surface.specular = float3(0.04, 0.04, 0.04);
-                
-                return UniversalFragmentPBR(lighting, surface);
+
+                float3 N = normalize(i.worldNormal);
+                float3 T = normalize(i.worldTangent);
+                float3 B = normalize(i.worldBitangent);
+
+                float3x3 TBN = float3x3(T, B, N);
+                N = normalize(mul(tNormal, TBN));
+
+                float3 L = _WorldSpaceLightPos0.xyz;
+                float3 V = normalize(_WorldSpaceCameraPos - i.worldPos);
+
+                float ndotl = saturate(dot(N, L));
+                float3 diffuse = albedo * _LightColor0.rgb * ndotl;
+
+                float3 ambient = ShadeSH9(float4(N, 1.0));
+
+                float3 H = normalize(L + V);
+                float spec = pow(saturate(dot(N, H)), lerp(0, 128, smoothness));
+                float3 specCol = _LightColor0.rgb * spec * lerp(0.04, 1.0, metallic);
+
+                float3 color = diffuse + ambient * albedo + specCol;
+                return float4(color, 1);
             }
-            ENDHLSL
+            ENDCG
         }
     }
 }
