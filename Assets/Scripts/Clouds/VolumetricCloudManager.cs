@@ -49,7 +49,7 @@ public class VolumetricCloudManager : MonoBehaviour
 
         buffer.SetData(rawData);
 
-        cloudMat.SetVector("Sun Direction", Sun.transform.rotation * Vector3.forward);
+        cloudMat.SetVector("_SunDirection", Sun.transform.rotation * Vector3.forward);
         cloudMat.SetBuffer("planetDataBuffer", buffer);
     }
 

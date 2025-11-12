@@ -49,8 +49,8 @@ Shader "Custom/VolumetricCloud"
             fixed4 _CloudColor;
                 
             #define NUM_OCTAVES 10
-            #define MAX_RAYMARCH_STEPS 200
-            #define MAX_STEP_SIZE 300
+            #define MAX_RAYMARCH_STEPS 400
+            #define MAX_STEP_SIZE 200
             #define MIN_STEP_SIZE 0.1 
             #define MAX_STEPS_LIGHTS 5
             #define ABSORPTION_COEFFICIENT 0.8
