@@ -423,6 +423,7 @@ MonoBehaviour:
   _Mesh: {fileID: 4300000, guid: 4e34e0b91d1d747428bd7b8af8b5412f, type: 2}
   _MaxDrawDistance: 1000
   _NumberOfInstances: 2000000
+  _TransformBufferAsset: {fileID: 4900000, guid: c029537692126d546af0ed233c564c88, type: 3}
   _JitterAmount: 1
   _PlanetOptions: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
   _MinTreeScale: 0.2
