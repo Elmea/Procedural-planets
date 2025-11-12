@@ -140,7 +140,7 @@ namespace PlanetGen
                     WarpFrequency = planetOptions.ContinentWarpFrequency,
 
                     // Land/Ocean basic settings
-                    SeaLevel = planetOptions.SeaLevel,
+                    SeaLevel = 0.5f, // yeah it's hard coded...
                     SeaCoastLimit = planetOptions.SeaCoastLimit,
                     LandCoastLimit = planetOptions.LandCoastLimit,
 

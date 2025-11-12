@@ -394,7 +394,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _Resolution: 128
-  _PlanetRadius: 16000
   _MinLeafSize: 64
   _BudgetPerFrame: 16
   _EnableCulling: 0
@@ -424,9 +423,10 @@ MonoBehaviour:
   _Mesh: {fileID: 4300000, guid: 4e34e0b91d1d747428bd7b8af8b5412f, type: 2}
   _MaxDrawDistance: 1000
   _NumberOfInstances: 2000000
-  _JitterAmount: 0.5
+  _JitterAmount: 1
   _PlanetOptions: {fileID: 11400000, guid: 3edb39c7b1ee2264893b13579ad7ca3d, type: 2}
-  _PlanetRadius: 16000
+  _MinTreeScale: 0.2
+  _MaxTreeScale: 0.3
 --- !u!1 &1419418090
 GameObject:
   m_ObjectHideFlags: 0

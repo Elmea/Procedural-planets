@@ -3,6 +3,8 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "PlanetEnvOptions", menuName = "Scriptable Objects/PlanetOptions")]
 public class PlanetOptionsSO : ScriptableObject
 {
+    public float PlanetRadius;
+
     [Header("Continent Noise Settings")]
     [Tooltip("This settings is in fraction of the planet radius")]
     public float ContinentWavelength = 2.5f;
@@ -14,7 +16,6 @@ public class PlanetOptionsSO : ScriptableObject
 
     [Header("Land/Ocean Basic Settings")]
     [Tooltip("Sea level should be between 0 and 1. 0 being no sea and 1 being full sea")]
-    public float SeaLevel = 0.5f;
     public float SeaCoastLimit = 0.46f;
     public float LandCoastLimit = 0.54f;
 

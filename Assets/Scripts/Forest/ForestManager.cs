@@ -22,7 +22,6 @@ public class ForestManager : MonoBehaviour
     [SerializeField] uint _NumberOfInstances;
     [SerializeField] float _JitterAmount = 0.3f;
     [SerializeField] PlanetOptionsSO _PlanetOptions;
-    [SerializeField] float _PlanetRadius;
     [SerializeField] float _MinTreeScale = 0.2f;
     [SerializeField] float _MaxTreeScale = 0.3f;
 
@@ -45,8 +44,6 @@ public class ForestManager : MonoBehaviour
 
         _InitCommandData = new IndirectDrawArgs[2];
 
-        float3 sphereCenter = float3.zero;
-
         uint numThreads = (uint)Math.Max(1, Environment.ProcessorCount);
         uint chunk = (_NumberOfInstances + numThreads - 1u) / numThreads;
 
@@ -55,6 +52,8 @@ public class ForestManager : MonoBehaviour
         uint baseSeed = 307878359u;
 
         float arcLength = 2f / math.sqrt(_NumberOfInstances);
+
+        float planetRadius = _PlanetOptions.PlanetRadius;
 
         Parallel.For(0, numThreads, t =>
         {
@@ -88,15 +87,15 @@ public class ForestManager : MonoBehaviour
                 float3 perturbed = dir + off.x * tangent + off.y * bitangent;
                 dir = math.normalize(perturbed);
 
-                float3 posOnPlanet = dir * _PlanetRadius;
+                float3 posOnPlanet = dir * planetRadius;
 
                 float continent = BurstUtils.ContinentField(
                     posOnPlanet,
-                    _PlanetRadius, _PlanetOptions.ContinentWavelength,
+                    planetRadius, _PlanetOptions.ContinentWavelength,
                     _PlanetOptions.ContinentWarpAmplitude, _PlanetOptions.ContinentWarpFrequency,
                     _PlanetOptions.ContinentLacunarity, _PlanetOptions.ContinentOctaves, _PlanetOptions.ContinentPersistence);
 
-                float coastlineOffset = BurstUtils.CoastBreaker(posOnPlanet, _PlanetRadius);
+                float coastlineOffset = BurstUtils.CoastBreaker(posOnPlanet, planetRadius);
 
                 float continentWithCoastline = continent + (0.05f * (coastlineOffset - 0.5f));
                 float landMask = math.smoothstep(_PlanetOptions.SeaCoastLimit, _PlanetOptions.LandCoastLimit, continentWithCoastline);
@@ -109,11 +108,11 @@ public class ForestManager : MonoBehaviour
                 float hillsMask = math.smoothstep(_PlanetOptions.LandCoastLimit, _PlanetOptions.LandHillRampLimit, continentWithCoastline);
                 land = BurstUtils.HillsField(
                     posOnPlanet, land, hillsMask, _PlanetOptions.BaseLandLevel,
-                    _PlanetRadius, _PlanetOptions.HillsWavelength,
+                    planetRadius, _PlanetOptions.HillsWavelength,
                     _PlanetOptions.HillsLacunarity, _PlanetOptions.HillsOctaves, _PlanetOptions.HillsPersistence,
                     _PlanetOptions.HillsAmplitudeMeters);
 
-                float3 pos = dir * (_PlanetRadius + land);
+                float3 pos = dir * (planetRadius + land);
                 float3 fwd = tangent;
                 quaternion rot = quaternion.LookRotationSafe(fwd, dir);
 
@@ -194,6 +193,9 @@ public class ForestManager : MonoBehaviour
         _InitCommandData[1].instanceCount = isCullingEnabled ? 0 : (uint)_KeptNumberOfInstances;
         _CommandBuffer.SetData(_InitCommandData);
 
+        if (math.distance(Camera.main.transform.position, transform.position) > _PlanetOptions.PlanetRadius + _MaxDrawDistance * 1.5)
+            return;
+
         Plane[] planes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
         Vector4[] planeVectors = new Vector4[6];
         for (int i = 0; i < planes.Length; i++)
@@ -231,7 +233,7 @@ public class ForestManager : MonoBehaviour
         }
 
         var rp = new RenderParams(_BarkMaterial);
-        rp.worldBounds = new Bounds(transform.position, (_PlanetRadius + _PlanetOptions.MountainAmplitudeMeters * 10) * Vector3.one);
+        rp.worldBounds = new Bounds(transform.position, (_PlanetOptions.PlanetRadius * 1.5f) * Vector3.one);
         rp.matProps = new MaterialPropertyBlock();
         rp.matProps.SetBuffer("_TransformBuffer", isCullingEnabled ? _VisibleTransformBuffer : _TransformBuffer);
         rp.matProps.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);

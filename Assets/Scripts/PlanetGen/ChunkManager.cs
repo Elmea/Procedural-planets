@@ -22,7 +22,6 @@ namespace PlanetGen
         [SerializeField] private int _Resolution = 128; // vertices per chunk axis
 
         [Header("QuadTree Settings")]
-        [SerializeField] private float _PlanetRadius = 16000f;
         [SerializeField] private float _MinLeafSize = 128f;
         [SerializeField] private int _BudgetPerFrame = 32; // max nodes to split/merge per frame
         [SerializeField] private bool _EnableCulling = false;
@@ -60,59 +59,59 @@ namespace PlanetGen
                 _CullCamera = Camera.main;
 
             _WaterChunkMaterial.SetVector("PlanetPosition", transform.position);
-
+            float planetRadius = _OptionsSO.PlanetRadius;
             // Face +X
             _FaceMatrices[(int)PlanetFace.PX] = float4x4.TRS(
-                new float3(_PlanetRadius, 0f, 0f),
+                new float3(planetRadius, 0f, 0f),
                 quaternion.AxisAngle(new float3(0f, 0f, 1f), math.radians(-90f)),
                 new float3(1)
             );
-            _FaceQuadTrees[(int)PlanetFace.PX] = new TerrainQuadTree(_PlanetRadius * 2f, _MinLeafSize,
+            _FaceQuadTrees[(int)PlanetFace.PX] = new TerrainQuadTree(planetRadius * 2f, _MinLeafSize,
                 _FaceMatrices[(int)PlanetFace.PX], transform, PlanetFace.PX, _EnableCulling);
 
             // Face -X
             _FaceMatrices[(int)PlanetFace.NX] = float4x4.TRS(
-                new float3(-_PlanetRadius, 0f, 0f),
+                new float3(-planetRadius, 0f, 0f),
                 quaternion.AxisAngle(new float3(0f, 0f, 1f), math.radians(90f)),
                 new float3(1)
             );
-            _FaceQuadTrees[(int)PlanetFace.NX] = new TerrainQuadTree(_PlanetRadius * 2f, _MinLeafSize,
+            _FaceQuadTrees[(int)PlanetFace.NX] = new TerrainQuadTree(planetRadius * 2f, _MinLeafSize,
                 _FaceMatrices[(int)PlanetFace.NX], transform, PlanetFace.NX, _EnableCulling);
 
             // Face +Y
             _FaceMatrices[(int)PlanetFace.PY] = float4x4.TRS(
-                new float3(0, _PlanetRadius, 0),
+                new float3(0, planetRadius, 0),
                 quaternion.identity,
                 new float3(1)
             );
-            _FaceQuadTrees[(int)PlanetFace.PY] = new TerrainQuadTree(_PlanetRadius * 2f, _MinLeafSize,
+            _FaceQuadTrees[(int)PlanetFace.PY] = new TerrainQuadTree(planetRadius * 2f, _MinLeafSize,
                 _FaceMatrices[(int)PlanetFace.PY], transform, PlanetFace.PY, _EnableCulling);
 
             // Face -Y
             _FaceMatrices[(int)PlanetFace.NY] = float4x4.TRS(
-                new float3(0, -_PlanetRadius, 0),
+                new float3(0, -planetRadius, 0),
                 quaternion.AxisAngle(new float3(1, 0, 0), math.radians(180)),
                 new float3(1)
             );
-            _FaceQuadTrees[(int)PlanetFace.NY] = new TerrainQuadTree(_PlanetRadius * 2f, _MinLeafSize,
+            _FaceQuadTrees[(int)PlanetFace.NY] = new TerrainQuadTree(planetRadius * 2f, _MinLeafSize,
                 _FaceMatrices[(int)PlanetFace.NY], transform, PlanetFace.NY, _EnableCulling);
 
             // Face +Z
             _FaceMatrices[(int)PlanetFace.PZ] = float4x4.TRS(
-                new float3(0f, 0f, _PlanetRadius),
+                new float3(0f, 0f, planetRadius),
                 quaternion.AxisAngle(new float3(1, 0, 0), math.radians(90)),
                 new float3(1)
             );
-            _FaceQuadTrees[(int)PlanetFace.PZ] = new TerrainQuadTree(_PlanetRadius * 2f, _MinLeafSize,
+            _FaceQuadTrees[(int)PlanetFace.PZ] = new TerrainQuadTree(planetRadius * 2f, _MinLeafSize,
                 _FaceMatrices[(int)PlanetFace.PZ], transform, PlanetFace.PZ, _EnableCulling);
 
             // Face -Z
             _FaceMatrices[(int)PlanetFace.NZ] = float4x4.TRS(
-                new float3(0f, 0f, -_PlanetRadius),
+                new float3(0f, 0f, -planetRadius),
                 quaternion.AxisAngle(new float3(1, 0, 0), math.radians(-90)),
                 new float3(1)
             );
-            _FaceQuadTrees[(int)PlanetFace.NZ] = new TerrainQuadTree(_PlanetRadius * 2f, _MinLeafSize,
+            _FaceQuadTrees[(int)PlanetFace.NZ] = new TerrainQuadTree(planetRadius * 2f, _MinLeafSize,
                 _FaceMatrices[(int)PlanetFace.NZ], transform, PlanetFace.NZ, _EnableCulling);
         }
 
@@ -170,9 +169,9 @@ namespace PlanetGen
                 chunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
 
                 double3 qtNoRotCenter = qtb.Center;
-                qtNoRotCenter.y = _PlanetRadius;
-                qtNoRotCenter = math.normalize(qtNoRotCenter) * _PlanetRadius;
-                chunk.Initialize(_Resolution, b.Size, _TerrainChunkMaterial, false, _PlanetRadius, qtb.Center, qtNoRotCenter);
+                qtNoRotCenter.y = _OptionsSO.PlanetRadius;
+                qtNoRotCenter = math.normalize(qtNoRotCenter) * _OptionsSO.PlanetRadius;
+                chunk.Initialize(_Resolution, b.Size, _TerrainChunkMaterial, false, _OptionsSO.PlanetRadius, qtb.Center, qtNoRotCenter);
 
                 var tris = SharedTrianglesCache.Get(_Resolution);
                 var h = chunk.ScheduleBuild(tris, _OptionsSO);
@@ -188,7 +187,7 @@ namespace PlanetGen
                     waterChunk.transform.SetParent(transform, false);
                     waterChunk.transform.localPosition = new Vector3((float)b.Center.x, (float)b.Center.y, (float)b.Center.z);
                     waterChunk.transform.rotation = qt.GetQuadTreeMatrix().rotation;
-                    waterChunk.Initialize(_Resolution, b.Size, _WaterChunkMaterial, true, _PlanetRadius, qtb.Center, qtNoRotCenter);
+                    waterChunk.Initialize(_Resolution, b.Size, _WaterChunkMaterial, true, _OptionsSO.PlanetRadius, qtb.Center, qtNoRotCenter);
                     var waterH = waterChunk.ScheduleBuild(tris, _OptionsSO);
                     _Handles.Add(waterH);
                     _WaterChunks[key] = waterChunk;
