@@ -58,6 +58,51 @@ The various parameters for the tree generation can be tweaked directly in the `F
 
 # Cloud Generation
 
+## Preparation
+To render them arround a planet, I had to create a script that will gather informations of planets that are on the scene and give thoses informations to the shader we will use to render them via a buffer.
+I so made 3 classes :
+
+A scriptable object whith the parameters for the clouds of a planet :
+
+![](ReadMeAssets/CloudParam.png)
+
+A renderer, who hold the scriptable to the right object :
+
+![](ReadMeAssets/CloudRenderer.png)
+
+A manager, responsible of gathering information and creating and sending the parameters buffer to the shader :
+
+![](ReadMeAssets/CloudManager.png)
+
+*note : the generate button call the gathering function that is usually called on start, usefull when we add a new planet so we can swiftly observe clouds in editor*
+
+## Rendering
+Clouds are generated using a combination of wave and noises called the Fractal Brownian Motion (FBM) allowing us, by adding multiple iteration of noise to a sin function, to create fluctuations effect creating a cloudy texture. 
+
+The main part of the volumetrics cloud is in the post process shader responsible of their rendering
+
+![](ReadMeAssets/CloudShader.png)
+
+Firstly, for each planet we determine a sphere where we will render our clouds using the Min/Max Height parameter we setted early on and the center and radius of the planet we are sampling.
+
+Then, using a raymarching technique, and our FBM as the "texture" for the volume we can render ou cloud's volume arround.
+
+*Note : I also wanted to render the lighting on the clouds using a physicaly based way to calculate the light energy throught the cloud using Beer-Lambert law. Unfortunaly struggled with it and ran out of time.*
+
+## Optimisation
+
+Raymarching can be expensive, so it has been a big part to optimize the rendering of our clouds. 
+
+To do so I created a kind LOD system adapted to this rendering technique. 
+
+![](ReadMeAssets/CloudLOD.png)
+
+Using those parameters defined at the begening of my shader, I can interpolate the step size of ou marching by the distance of de current position of the algorithm. The farest the point is, the less detailed the clouds will be until the cloud is culled of by the maximum distance parameter.
+
+## Result
+
+![](ReadMeAssets/Clouds.png)
+
 # Tree Generation
 
 This part explains how to use the editor tool to create or edit a tree. <br/>

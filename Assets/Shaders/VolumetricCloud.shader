@@ -48,7 +48,7 @@ Shader "Custom/VolumetricCloud"
             
             fixed4 _CloudColor;
                 
-            #define NUM_OCTAVES 10
+            #define NUM_OCTAVES 7
             #define MAX_RAYMARCH_STEPS 400
             #define MAX_STEP_SIZE 200
             #define MIN_STEP_SIZE 0.1 
@@ -122,6 +122,7 @@ Shader "Custom/VolumetricCloud"
                     q *= 2.0;
                     weight *= 0.5;
                 }
+
                 return clamp(ret, 0.0, 1.0);
             }
 
@@ -143,9 +144,9 @@ Shader "Custom/VolumetricCloud"
                 return fbm((pos + planet.speed * _Time) / planet.cloudSize);
             }
 
-            float BeersLaw (float dist, float absorption) 
+            float BeersLaw(float dist, float absorption) 
             {
-              return exp(-dist * absorption);
+                return exp(-dist * absorption);
             }
 
             float lightMarch(float3 position, float3 rayDir, planetData planet)
@@ -194,18 +195,12 @@ Shader "Custom/VolumetricCloud"
                         float layerHeight = planet.minMaxHeight.y - planet.minMaxHeight.x;
                         float heightRatio = saturate((heightAboveSurface - planet.minMaxHeight.x) / layerHeight);
 
-                        float heightFalloff = smoothstep(0.05, 0.5, heightRatio) * (1.0 - smoothstep(0.5, 0.95, heightRatio));
+                        float heightFalloff = smoothstep(0.01, 0.25, heightRatio) * (1.0 - smoothstep(0.6, 0.95, heightRatio));
                         
                         float density = CalcSample(p, planet) * heightFalloff;   
 
                         if (density > 0.001)
                         {
-                            /*
-                            float lightTransmittance = lightMarch(p, rd, planet);
-                            float luminance = density;
-                            totalTransmittance *= lightTransmittance;
-                            lightEnergy += totalTransmittance;*/
-
                             float3 c = lerp(_CloudColor.rgb, 0, density);
                             float a = density * 0.4 * (1.0 - alpha);
                             color += c * a;
@@ -216,10 +211,9 @@ Shader "Custom/VolumetricCloud"
                     float distToOrigin = length(ro - p) ;
                     depth += lerp(MIN_STEP_SIZE, MAX_STEP_SIZE, distToOrigin / length(ro - planet.center));
                     if (alpha > 0.998) break;
-                    // if (distToOrigin > MAX_DIST) break;
                 }
 
-                return fixed4(saturate(color + lightEnergy), saturate(alpha));
+                return fixed4(saturate(color), saturate(alpha));
             }
 
             v2f vert (uint id : SV_VertexID)
